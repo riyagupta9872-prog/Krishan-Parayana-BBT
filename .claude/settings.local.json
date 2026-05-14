@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/User/nodejs/**)",
+      "Read(//c/Users/User/node-v20.11.0-win-x64/**)",
+      "PowerShell($p = \"C:\\\\Users\\\\User\\\\node-v20.11.0-win-x64\"; Test-Path $p; \\(Get-Item $p\\).FullName; cmd /c \"dir C:\\\\Users\\\\User\\\\node-v20.11.0-win-x64\" 2>&1 | Select-Object -First 20)"
+    ]
+  }
+}

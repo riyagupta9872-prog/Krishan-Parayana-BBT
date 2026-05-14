@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@layer base {
+  html { font-family: 'DM Sans', Inter, system-ui, sans-serif; }
+  body { background-color: #F0F7FF; color: #0F172A; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #F0F7FF; }
+  ::-webkit-scrollbar-thumb { background: #BFDBFE; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #93C5FD; }
+}
+
+@layer components {
+  /* ── Buttons ─────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dk active:scale-95 text-white font-body font-semibold
+      px-4 py-2.5 rounded-card shadow-sm transition-all duration-150
+      disabled:opacity-50 disabled:cursor-not-allowed
+      min-h-[44px] flex items-center justify-center gap-2 text-sm;
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-primary-lt border border-border-lt hover:border-border-blue
+      text-ink-2 font-body font-medium
+      px-4 py-2.5 rounded-card shadow-sm transition-all duration-150
+      disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2 text-sm;
+  }
+  .btn-danger {
+    @apply bg-danger-lt hover:bg-red-100 border border-red-200 text-danger font-body font-semibold
+      px-4 py-2.5 rounded-card transition-all duration-150 disabled:opacity-50
+      min-h-[44px] flex items-center justify-center gap-2 text-sm;
+  }
+  .btn-success {
+    @apply bg-success-lt hover:bg-green-100 border border-green-200 text-success font-body font-semibold
+      px-4 py-2.5 rounded-card transition-all duration-150
+      min-h-[44px] flex items-center justify-center gap-2 text-sm;
+  }
+  .btn-ghost {
+    @apply text-ink-3 hover:text-primary hover:bg-primary-lt
+      px-3 py-2 rounded-lg transition-all duration-150 font-body font-medium text-sm
+      min-h-[44px] flex items-center justify-center gap-1.5;
+  }
+  .btn-icon {
+    @apply w-9 h-9 flex items-center justify-center rounded-lg text-ink-3
+      hover:text-primary hover:bg-primary-lt transition-all;
+  }
+
+  /* ── Inputs ──────────────────────────────────────────── */
+  .input-field {
+    @apply w-full bg-white border border-border-lt rounded-lg px-3 py-2.5
+      text-ink font-body text-sm placeholder:text-ink-4
+      focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20
+      transition-all duration-150 shadow-sm;
+  }
+  .select-field {
+    @apply input-field cursor-pointer bg-white;
+  }
+
+  /* ── Cards ───────────────────────────────────────────── */
+  .card {
+    @apply bg-card-bg border border-border-lt rounded-card shadow-card p-4;
+  }
+  .card-hover {
+    @apply card hover:shadow-card-hover hover:border-border-blue
+      transition-all duration-150 cursor-pointer;
+  }
+  .card-blue {
+    @apply bg-primary-lt border border-border-blue rounded-card p-4;
+  }
+
+  /* ── Typography ──────────────────────────────────────── */
+  .section-title {
+    @apply font-display text-primary text-sm font-bold tracking-wide;
+  }
+  .page-title {
+    @apply font-display text-primary text-base font-bold tracking-wide;
+  }
+  .label {
+    @apply block text-ink-3 text-xs font-body font-medium mb-1.5;
+  }
+
+  /* ── Badges ──────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-pill text-xs font-body font-semibold;
+  }
+  .badge-blue  { @apply badge bg-primary-md text-primary; }
+  .badge-green { @apply badge bg-success-lt text-success; }
+  .badge-red   { @apply badge bg-danger-lt text-danger; }
+  .badge-amber { @apply badge bg-warning-lt text-warning; }
+  .badge-gray  { @apply badge bg-slate-100 text-slate-600; }
+
+  /* ── Divider ─────────────────────────────────────────── */
+  .divider { @apply border-t border-border-lt my-4; }
+
+  /* ── Scrollbar hide ──────────────────────────────────── */
+  .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  /* ── Tab active underline ────────────────────────────── */
+  .tab-active {
+    @apply text-primary font-semibold border-b-2 border-primary;
+  }
+  .tab-inactive {
+    @apply text-ink-3 hover:text-ink-2 border-b-2 border-transparent;
+  }
+}
