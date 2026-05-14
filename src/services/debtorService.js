@@ -1,17 +1,19 @@
 import {
   collection, doc, addDoc, updateDoc, getDocs, getDoc,
-  onSnapshot, serverTimestamp, query, orderBy, where, writeBatch
+  onSnapshot, serverTimestamp, query, orderBy, writeBatch
 } from 'firebase/firestore'
 import { db } from './firebase'
 
 const COL = 'debtors'
 
 export const debtorService = {
-  subscribe(callback) {
+  subscribe(callback, onError) {
     const q = query(collection(db, COL), orderBy('name'))
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    })
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('debtors subscribe:', err); callback([]); onError?.(err) }
+    )
   },
 
   async getAll() {
@@ -62,27 +64,29 @@ export const debtorService = {
     return updateDoc(doc(db, COL, id), { status: 'active', blockedReason: null })
   },
 
-  subscribeLedger(debtorId, callback) {
+  subscribeLedger(debtorId, callback, onError) {
     const q = query(collection(db, COL, debtorId, 'ledger'), orderBy('date'))
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    })
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('ledger subscribe:', err); callback([]); onError?.(err) }
+    )
   },
 
   async getLedger(debtorId) {
-    const snap = await getDocs(query(collection(db, COL, debtorId, 'ledger'), orderBy('date')))
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    try {
+      const snap = await getDocs(query(collection(db, COL, debtorId, 'ledger'), orderBy('date')))
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    } catch { return [] }
   },
 
   async addLedgerEntry(debtorId, entry) {
     const ledger = await this.getLedger(debtorId)
     const lastBalance = ledger.length > 0 ? ledger[ledger.length - 1].runningBalance || 0 : 0
     let runningBalance = lastBalance
-    if (entry.type === 'debit' || entry.type === 'opening') {
-      runningBalance = lastBalance + entry.amount
-    } else if (entry.type === 'credit' || entry.type === 'write-off') {
-      runningBalance = lastBalance - entry.amount
-    }
+    if (entry.type === 'debit' || entry.type === 'opening') runningBalance = lastBalance + entry.amount
+    else if (entry.type === 'credit' || entry.type === 'write-off') runningBalance = lastBalance - entry.amount
+
     const entryRef = await addDoc(collection(db, COL, debtorId, 'ledger'), {
       ...entry, runningBalance,
       date: serverTimestamp(),
@@ -91,30 +95,29 @@ export const debtorService = {
     })
     const newStatus = runningBalance <= 0 ? (runningBalance < 0 ? 'credit' : 'settled') : 'active'
     await updateDoc(doc(db, COL, debtorId), {
-      status: newStatus,
-      lastTransactionDate: serverTimestamp(),
-      currentBalance: runningBalance,
+      status: newStatus, lastTransactionDate: serverTimestamp(), currentBalance: runningBalance,
     })
     return entryRef
   },
 
   async receivePayment(debtorId, paymentData, uid) {
-    const entry = {
+    return this.addLedgerEntry(debtorId, {
       type: 'credit',
-      description: `Payment received — ${paymentData.mode}${paymentData.reference ? ` (Ref: ${paymentData.reference})` : ''}`,
+      description: `Payment — ${paymentData.mode}${paymentData.reference ? ` (Ref: ${paymentData.reference})` : ''}`,
       amount: Number(paymentData.amount),
       paymentMode: paymentData.mode,
       paymentRef: paymentData.reference || '',
       enteredBy: uid,
-    }
-    return this.addLedgerEntry(debtorId, entry)
+    })
   },
 
-  subscribeCallingLog(debtorId, callback) {
+  subscribeCallingLog(debtorId, callback, onError) {
     const q = query(collection(db, COL, debtorId, 'callingLog'), orderBy('date', 'desc'))
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    })
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('callingLog subscribe:', err); callback([]); onError?.(err) }
+    )
   },
 
   async addCallingLog(debtorId, logData, uid) {
@@ -125,8 +128,7 @@ export const debtorService = {
 
   async writeOff(debtorId, reason, amount, uid) {
     await this.addLedgerEntry(debtorId, {
-      type: 'write-off', description: `Write-off: ${reason}`,
-      amount, enteredBy: uid,
+      type: 'write-off', description: `Write-off: ${reason}`, amount, enteredBy: uid,
     })
     await addDoc(collection(db, 'writeoffs'), {
       debtorId, reason, amount, date: serverTimestamp(), adminUid: uid,
@@ -135,8 +137,7 @@ export const debtorService = {
 
   async updateDirectoryCache(debtorId, profileData) {
     return updateDoc(doc(db, COL, debtorId), {
-      directoryCache: profileData,
-      directoryCacheUpdatedAt: serverTimestamp(),
+      directoryCache: profileData, directoryCacheUpdatedAt: serverTimestamp(),
     })
   },
 }

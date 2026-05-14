@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 
-const COL = 'adminAudit'
+const COL       = 'adminAudit'
 const PRICE_COL = 'priceAudit'
 
 export const auditService = {
@@ -12,19 +12,27 @@ export const auditService = {
     return addDoc(collection(db, COL), {
       actionType, entityId,
       before: JSON.stringify(before || {}),
-      after: JSON.stringify(after || {}),
+      after:  JSON.stringify(after  || {}),
       adminUid, timestamp: serverTimestamp(),
     })
   },
 
-  subscribe(callback) {
+  subscribe(callback, onError) {
     const q = query(collection(db, COL), orderBy('timestamp', 'desc'), limit(200))
-    return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('adminAudit subscribe:', err); callback([]); onError?.(err) }
+    )
   },
 
-  async getAll() {
-    const snap = await getDocs(query(collection(db, COL), orderBy('timestamp', 'desc'), limit(200)))
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  subscribePriceAudit(callback, onError) {
+    const q = query(collection(db, PRICE_COL), orderBy('timestamp', 'desc'), limit(200))
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('priceAudit subscribe:', err); callback([]); onError?.(err) }
+    )
   },
 
   async logPriceChange(itemId, itemName, oldPrice, newPrice, reason, adminUid) {
@@ -32,15 +40,5 @@ export const auditService = {
       itemId, itemName, oldPrice, newPrice, reason,
       adminUid, timestamp: serverTimestamp(),
     })
-  },
-
-  subscribePriceAudit(callback) {
-    const q = query(collection(db, PRICE_COL), orderBy('timestamp', 'desc'), limit(200))
-    return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-  },
-
-  async getPriceAudit() {
-    const snap = await getDocs(query(collection(db, PRICE_COL), orderBy('timestamp', 'desc'), limit(500)))
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   },
 }

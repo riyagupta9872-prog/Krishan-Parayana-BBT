@@ -1,29 +1,23 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDocs,
-  onSnapshot, serverTimestamp, query, where, orderBy, getDoc
+  collection, doc, addDoc, updateDoc, getDocs,
+  onSnapshot, serverTimestamp, query, where, orderBy, getDoc, increment
 } from 'firebase/firestore'
 import { db } from './firebase'
 
 const COL = 'inventory'
 
 export const inventoryService = {
-  subscribe(callback) {
+  subscribe(callback, onError) {
     const q = query(collection(db, COL), orderBy('name'))
-    return onSnapshot(q, (snap) => {
-      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      callback(items)
-    })
-  },
-
-  subscribeByCategory(category, callback) {
-    const q = query(collection(db, COL), where('category', '==', category), orderBy('name'))
-    return onSnapshot(q, (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    })
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('inventory subscribe:', err); callback([]); onError?.(err) }
+    )
   },
 
   async getAll() {
-    const snap = await getDocs(collection(db, COL))
+    const snap = await getDocs(query(collection(db, COL), orderBy('name')))
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   },
 
@@ -66,18 +60,13 @@ export const inventoryService = {
   },
 
   async incrementStock(id, qty) {
-    const item = await this.getById(id)
-    if (!item) throw new Error('Item not found')
-    return updateDoc(doc(db, COL, id), { qty: item.qty + qty, updatedAt: serverTimestamp() })
+    return updateDoc(doc(db, COL, id), { qty: increment(qty), updatedAt: serverTimestamp() })
   },
 }
 
 export const CATEGORIES = {
-  APPAREL: ['Gopi Dress', 'Kurta', 'Dhoti'],
+  APPAREL:     ['Gopi Dress', 'Kurta', 'Dhoti'],
   ACCESSORIES: ['Kanthi Mala', 'Japa Mala', 'Bead Bag', 'Hare Krishna Card', 'Gopi Chandan'],
-  BOOKS: ['Book'],
+  BOOKS:       ['Book'],
 }
-
 export const ALL_CATEGORIES = [...CATEGORIES.APPAREL, ...CATEGORIES.ACCESSORIES, ...CATEGORIES.BOOKS]
-
-export const DEFAULT_THRESHOLDS = { apparel: 5, accessories: 5, stationery: 50, books: 3 }
