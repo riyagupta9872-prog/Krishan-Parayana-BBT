@@ -57,12 +57,7 @@ function PriceEditPanel({ item, onClose, onFullEdit }) {
                 <span className="text-white font-bold">{fmt.currency(item.sellingPrice)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={onFullEdit} className="text-xs bg-white/20 hover:bg-white/30 text-white px-2.5 py-1.5 rounded-lg transition-all">
-                ✏ Full Edit
-              </button>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-sm font-bold">✕</button>
-            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-sm font-bold">✕</button>
           </div>
         </div>
 
@@ -295,7 +290,8 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                   {isSuperAdmin && (
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning">±</button>
-                      <button onClick={() => setPriceItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-primary">✏</button>
+                      <button onClick={() => setPriceItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-primary" title="Edit price">₹✏</button>
+                      <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7" title="Edit item">✏</button>
                     </div>
                   )}
                 </div>
@@ -317,7 +313,13 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                     </span>
                   </div>
                   <div className="text-right">
-                    <p className="text-ink font-semibold text-sm">{fmt.currency(item.sellingPrice)}</p>
+                    <div className="flex items-center justify-end gap-1">
+                      <p className="text-ink font-semibold text-sm">{fmt.currency(item.sellingPrice)}</p>
+                      {isSuperAdmin && (
+                        <button onClick={() => setPriceItem(item)} title="Edit price & history"
+                          className="text-ink-4 hover:text-primary transition-colors text-xs leading-none opacity-60 hover:opacity-100">✏</button>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-primary font-semibold text-sm">{fmt.currency(value)}</p>
@@ -326,7 +328,7 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                     {isSuperAdmin && (
                       <>
                         <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning" title="Adjust stock">±</button>
-                        <button onClick={() => setPriceItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-primary" title="Edit price & history">✏</button>
+                        <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7" title="Edit item">✏</button>
                         <button onClick={() => handleToggleActive(item)}
                           className={`btn-ghost text-xs px-2 py-1 min-h-0 h-7 ${item.status === 'inactive' ? 'text-success' : 'text-ink-3'}`}
                           title={item.status === 'inactive' ? 'Mark active' : 'Mark inactive'}>
