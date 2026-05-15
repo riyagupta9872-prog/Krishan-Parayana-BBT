@@ -5,28 +5,25 @@ import Header from './components/layout/Header'
 import TabBar from './components/layout/TabBar'
 import Toast from './components/common/Toast'
 import OfflineBanner from './components/common/OfflineBanner'
-import { PageLoader } from './components/common/LoadingSpinner'
 import Dashboard from './components/dashboard/Dashboard'
-import InventoryTab from './components/inventory/InventoryTab'
+import InventoryManagement from './components/inventory/InventoryManagement'
+import SalesTab from './components/sales/SalesTab'
 import DebtorsTab from './components/debtors/DebtorsTab'
-import ReceivingTab from './components/receiving/ReceivingTab'
 import AgingReport from './components/aging/AgingReport'
 import RatesTab from './components/rates/RatesTab'
 import AdminLog from './components/admin/AdminLog'
 
 function TabContent({ tab, isSuperAdmin }) {
-  const tabMap = {
-    dashboard:   <Dashboard />,
-    apparel:     <InventoryTab tabGroup="apparel" />,
-    accessories: <InventoryTab tabGroup="accessories" />,
-    books:       <InventoryTab tabGroup="books" />,
-    debtors:     <DebtorsTab />,
-    receiving:   <ReceivingTab />,
-    aging:       <AgingReport />,
+  const map = {
+    dashboard: <Dashboard />,
+    inventory: <InventoryManagement />,
+    sales:     <SalesTab />,
+    debtors:   <DebtorsTab />,
+    aging:     <AgingReport />,
     ...(isSuperAdmin ? { rates: <RatesTab />, admin: <AdminLog /> } : {}),
   }
-  return tabMap[tab] || (
-    <div className="flex-1 flex items-center justify-center">
+  return map[tab] || (
+    <div className="flex-1 flex items-center justify-center p-8">
       <p className="text-ink-3 font-body">Tab not found</p>
     </div>
   )
@@ -57,13 +54,10 @@ export default function App() {
       <OfflineBanner />
       <Header />
       <TabBar />
-
-      {/* pb-20 on mobile = clears the fixed bottom nav (≈80px) */}
-      {/* pb-24 on mobile clears the fixed bottom nav; sm:pb-10 for desktop */}
+      {/* pb-24 clears the fixed bottom nav on mobile */}
       <main className="flex-1 pb-24 sm:pb-10">
         <TabContent tab={activeTab} isSuperAdmin={isSuperAdmin} />
       </main>
-
       <Toast />
     </div>
   )
