@@ -1,29 +1,30 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
+import {
+  signInWithEmailAndPassword, signOut, onAuthStateChanged,
+  createUserWithEmailAndPassword, updateProfile,
+} from 'firebase/auth'
 import { auth, db } from '../services/firebase'
 import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore'
 
 const AuthContext = createContext(null)
 
 async function resolveRole(firebaseUser) {
-  const userRef = doc(db, 'users', firebaseUser.uid)
+  const userRef  = doc(db, 'users', firebaseUser.uid)
   const userSnap = await getDoc(userRef)
 
   if (userSnap.exists()) {
-    // Known user — read role from Firestore
     return userSnap.data().superAdmin === true
   }
 
-  // New user — check if ANY user document exists yet
+  // New user — is this the very first account ever?
   const allUsers = await getDocs(collection(db, 'users'))
-  const isFirst = allUsers.empty
+  const isFirst  = allUsers.empty
 
-  // Write this user's profile document
   await setDoc(userRef, {
     uid:         firebaseUser.uid,
     email:       firebaseUser.email,
     displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-    superAdmin:  isFirst,          // first sign-in → Super Admin; everyone else → User
+    superAdmin:  isFirst,
     createdAt:   new Date().toISOString(),
   })
 
@@ -49,7 +50,6 @@ export function AuthProvider({ children }) {
           })
         } catch (err) {
           console.error('resolveRole failed:', err)
-          // Firestore rules might not be set yet — fall back to non-admin
           setUser({
             uid:         firebaseUser.uid,
             email:       firebaseUser.email,
@@ -67,11 +67,21 @@ export function AuthProvider({ children }) {
     return unsub
   }, [])
 
-  const login = (email, password) => signInWithEmailAndPassword(auth, email, password)
+  const login = (email, password) =>
+    signInWithEmailAndPassword(auth, email, password)
+
+  const signup = async (email, password, displayName) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    if (displayName) {
+      await updateProfile(cred.user, { displayName })
+    }
+    return cred
+  }
+
   const logout = () => signOut(auth)
 
   return (
-    <AuthContext.Provider value={{ user, isSuperAdmin, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, isSuperAdmin, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )
