@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, getDoc,
+  collection, doc, addDoc, updateDoc, getDocs, getDoc, deleteDoc,
   onSnapshot, serverTimestamp, query, orderBy, writeBatch
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -53,6 +53,10 @@ export const debtorService = {
 
   async update(id, data) {
     return updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+  },
+
+  async delete(id) {
+    return deleteDoc(doc(db, COL, id))
   },
 
   async block(id, reason, adminUid) {

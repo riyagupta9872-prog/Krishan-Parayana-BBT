@@ -6,6 +6,7 @@ import { debtorService } from '../../services/debtorService'
 import { transactionService } from '../../services/transactionService'
 import { useFirestoreSubscription } from '../../hooks/useFirestore'
 import { fmt, saleTypeBadge } from '../../utils/formatters'
+import AddDebtorModal from '../debtors/AddDebtorModal'
 import { computeAgingForDebtor } from '../../utils/agingUtils'
 import { PageLoader } from '../common/LoadingSpinner'
 import FirestoreRulesAlert from '../common/FirestoreRulesAlert'
@@ -157,6 +158,11 @@ function ProductPicker({ items, basket, onAdd }) {
           </div>
         </div>
       )}
+
+      <AddDebtorModal isOpen={showAddDebtor} onClose={() => {
+        setShowAddDebtor(false)
+        if (saleType === 'credit') debtorService.getAll().then(list => setDebtors(list.filter(d => d.status !== 'blocked' || isSuperAdmin)))
+      }} />
     </div>
   )
 }
@@ -174,8 +180,9 @@ export default function SalesTab() {
   const [debtors,  setDebtors]  = useState([])
   const [warning,  setWarning]  = useState(null)
   const [notes,    setNotes]    = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [histFilter, setHistFilter] = useState('all')
+  const [loading,       setLoading]       = useState(false)
+  const [histFilter,    setHistFilter]    = useState('all')
+  const [showAddDebtor, setShowAddDebtor] = useState(false)
 
   // Date range
   const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -354,7 +361,10 @@ export default function SalesTab() {
 
                 {saleType === 'credit' && (
                   <div>
-                    <label className="label">Assign to Debtor *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="label mb-0">Assign to Debtor *</label>
+                      <button onClick={() => setShowAddDebtor(true)} className="text-primary text-xs font-semibold hover:underline">+ Add New Debtor</button>
+                    </div>
                     <select value={debtorId} onChange={(e)=>setDebtorId(e.target.value)} className="select-field">
                       <option value="">— Select Debtor —</option>
                       {debtors.map((d)=>(

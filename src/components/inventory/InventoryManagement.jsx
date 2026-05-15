@@ -324,17 +324,30 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                   <div className="text-right">
                     <p className="text-primary font-semibold text-sm">{fmt.currency(value)}</p>
                   </div>
-                  <div className="flex gap-1 justify-end">
+                  <div className="flex gap-1 justify-end flex-wrap">
                     {isSuperAdmin && (
                       <>
-                        <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning" title="Adjust stock">±</button>
-                        <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7" title="Edit item">✏</button>
-                        <button onClick={() => handleToggleActive(item)}
-                          className={`btn-ghost text-xs px-2 py-1 min-h-0 h-7 ${item.status === 'inactive' ? 'text-success' : 'text-ink-3'}`}
-                          title={item.status === 'inactive' ? 'Mark active' : 'Mark inactive'}>
-                          {item.status === 'inactive' ? '✓' : '⊘'}
+                        <button onClick={() => onAdjust(item)} title="Adjust stock"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all h-7">
+                          ± Adj
                         </button>
-                        <button onClick={() => setConfirmDel(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-danger" title="Delete">🗑</button>
+                        <button onClick={() => setPriceItem(item)} title="Edit price & history"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all h-7">
+                          ₹ Price
+                        </button>
+                        <button onClick={() => setEditItem(item)} title="Edit item details"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all h-7">
+                          ✏ Edit
+                        </button>
+                        <button onClick={() => handleToggleActive(item)} title={item.status === 'inactive' ? 'Mark active' : 'Mark inactive'}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-all h-7
+                            ${item.status === 'inactive' ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}>
+                          {item.status === 'inactive' ? '✓ On' : '⊘ Off'}
+                        </button>
+                        <button onClick={() => setConfirmDel(item)} title="Delete"
+                          className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all h-7">
+                          🗑
+                        </button>
                       </>
                     )}
                   </div>

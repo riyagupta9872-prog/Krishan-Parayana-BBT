@@ -10,6 +10,7 @@ import { PageLoader } from '../common/LoadingSpinner'
 import FirestoreRulesAlert from '../common/FirestoreRulesAlert'
 import AddDebtorModal from './AddDebtorModal'
 import DebtorProfilePanel from './DebtorProfilePanel'
+import BulkImportDebtorsModal from './BulkImportDebtorsModal'
 
 const STATUS_BADGE = {
   active: 'badge-blue', settled: 'badge-green', blocked: 'badge-red', credit: 'badge-amber',
@@ -91,6 +92,7 @@ export default function DebtorsTab() {
   const [blockLoading, setBlockLoading] = useState(false)
   const [dirResult,    setDirResult]    = useState(null)
   const [dirSearching, setDirSearching] = useState(false)
+  const [showImport,   setShowImport]   = useState(false)
 
   const { data: debtors, loading, error } = useFirestoreSubscription(
     (cb, e) => debtorService.subscribe(cb, e)
@@ -150,7 +152,10 @@ export default function DebtorsTab() {
             {debtors.filter(d => d.status === 'active').length} active · {fmt.currency(totalOutstanding)} outstanding
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn-primary text-sm px-4">+ Add Debtor</button>
+        <div className="flex gap-2">
+          {isSuperAdmin && <button onClick={() => setShowImport(true)} className="btn-secondary text-sm px-3">⬆ Import</button>}
+          <button onClick={() => setShowAdd(true)} className="btn-primary text-sm px-4">+ Add Debtor</button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -234,6 +239,7 @@ export default function DebtorsTab() {
       )}
 
       <AddDebtorModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
+      {showImport && <BulkImportDebtorsModal isOpen={showImport} onClose={() => setShowImport(false)} />}
       {selected && <DebtorProfilePanel debtor={selected} onClose={() => setSelected(null)} />}
 
       {/* Block dialog */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useApp } from '../../context/AppContext'
 import { debtorService } from '../../services/debtorService'
 import { lookupDevoteeByPhone } from '../../services/directoryService'
 import { fmt } from '../../utils/formatters'
@@ -45,14 +46,16 @@ function LedgerEntry({ entry }) {
 /* ── Main panel ────────────────────────────────────────────────────*/
 export default function DebtorProfilePanel({ debtor, onClose }) {
   const { isSuperAdmin } = useAuth()
+  const { showToast } = useApp()
   const [ledger,      setLedger]      = useState([])
   const [callingLogs, setCallingLogs] = useState([])
   const [dirProfile,  setDirProfile]  = useState(null)
   const [dirLoading,  setDirLoading]  = useState(true)
-  const [section,     setSection]     = useState('ledger')
-  const [showPay,     setShowPay]     = useState(false)
-  const [showLog,     setShowLog]     = useState(false)
-  const [showDir,     setShowDir]     = useState(false)
+  const [section,       setSection]       = useState('ledger')
+  const [showPay,       setShowPay]       = useState(false)
+  const [showLog,       setShowLog]       = useState(false)
+  const [showDir,       setShowDir]       = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (!debtor) return
@@ -147,10 +150,13 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2 mt-2.5">
+            <div className="flex gap-2 mt-2.5 flex-wrap">
               <button onClick={() => setShowPay(true)} className="flex-1 bg-white text-primary text-xs font-semibold py-2 rounded-lg hover:bg-white/90 transition-all">💰 Pay</button>
               <button onClick={() => setShowLog(true)} className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 rounded-lg transition-all">📝 Log Call</button>
               <button onClick={() => setShowDir(true)} className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 rounded-lg transition-all">👤 Profile</button>
+              {isSuperAdmin && (
+                <button onClick={() => setConfirmDelete(true)} className="bg-red-500/30 hover:bg-red-500/50 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-all">🗑</button>
+              )}
             </div>
 
             {/* Balance bar */}
@@ -283,6 +289,23 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
       <ReceivePaymentModal isOpen={showPay} onClose={() => setShowPay(false)} debtor={debtor} />
       <CallingLogModal     isOpen={showLog} onClose={() => setShowLog(false)} debtor={debtor} callingLogs={callingLogs} />
       {showDir && <DevoteeDirectoryModal phone={debtor.phone} name={debtor.name} onClose={() => setShowDir(false)} />}
+
+      {/* Delete confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm">
+          <div className="bg-white rounded-modal shadow-modal border border-border-lt p-6 w-full max-w-sm animate-slide-up">
+            <h3 className="font-semibold text-ink text-base mb-1">Delete {debtor.name}?</h3>
+            <p className="text-ink-3 text-sm mb-4">This removes the debtor profile permanently. Ledger history will also be deleted.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(false)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={async () => {
+                try { await debtorService.delete(debtor.id); showToast('Debtor deleted', 'success'); onClose() }
+                catch (err) { showToast(err.message, 'error') }
+              }} className="btn-danger flex-1">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
