@@ -4,10 +4,12 @@ import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { debtorService } from '../../services/debtorService'
 
+const EMPTY = { name: '', phone: '', reference: '', teamName: '', openingBalance: '', creditLimit: '' }
+
 export default function AddDebtorModal({ isOpen, onClose }) {
   const { user, isSuperAdmin } = useAuth()
   const { showToast } = useApp()
-  const [form, setForm] = useState({ name: '', phone: '', whatsapp: '', notes: '', openingBalance: '', creditLimit: '' })
+  const [form, setForm] = useState(EMPTY)
   const [loading, setLoading] = useState(false)
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
@@ -19,7 +21,7 @@ export default function AddDebtorModal({ isOpen, onClose }) {
     try {
       await debtorService.add(form, user.uid)
       showToast(`${form.name} added`, 'success')
-      setForm({ name: '', phone: '', whatsapp: '', notes: '', openingBalance: '', creditLimit: '' })
+      setForm(EMPTY)
       onClose()
     } catch (err) { showToast(err.message || 'Failed', 'error') }
     finally { setLoading(false) }
@@ -33,32 +35,30 @@ export default function AddDebtorModal({ isOpen, onClose }) {
           <label className="label">Full Name *</label>
           <input value={form.name} onChange={(e) => set('name', e.target.value)} className="input-field" placeholder="Devotee's full name" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Phone * (10 digits)</label>
-            <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} className="input-field" placeholder="9876543210" />
-          </div>
-          <div>
-            <label className="label">WhatsApp</label>
-            <input type="tel" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value.replace(/\D/g, '').slice(0, 10))} className="input-field" placeholder="Same as phone" />
-          </div>
+        <div>
+          <label className="label">Phone * (10 digits)</label>
+          <input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} className="input-field" placeholder="9876543210" />
+        </div>
+        <div>
+          <label className="label">Reference</label>
+          <input value={form.reference} onChange={(e) => set('reference', e.target.value)} className="input-field" placeholder="Referred by / relationship" />
+        </div>
+        <div>
+          <label className="label">Team Name</label>
+          <input value={form.teamName} onChange={(e) => set('teamName', e.target.value)} className="input-field" placeholder="e.g. Sakhi Sang, Youth Forum" />
         </div>
         {isSuperAdmin && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Opening Balance (₹)</label>
-              <input type="number" value={form.openingBalance} onChange={(e) => set('openingBalance', e.target.value)} className="input-field" min={0} />
+              <input type="number" value={form.openingBalance} onChange={(e) => set('openingBalance', e.target.value)} className="input-field" min={0} placeholder="0" />
             </div>
             <div>
               <label className="label">Credit Limit (₹) — 0 = no limit</label>
-              <input type="number" value={form.creditLimit} onChange={(e) => set('creditLimit', e.target.value)} className="input-field" min={0} />
+              <input type="number" value={form.creditLimit} onChange={(e) => set('creditLimit', e.target.value)} className="input-field" min={0} placeholder="0" />
             </div>
           </div>
         )}
-        <div>
-          <label className="label">Notes / Relationship</label>
-          <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} className="input-field resize-none" rows={2} placeholder="Optional notes…" />
-        </div>
       </div>
     </Modal>
   )

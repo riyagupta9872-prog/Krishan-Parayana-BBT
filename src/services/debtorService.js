@@ -31,14 +31,16 @@ export const debtorService = {
       name: data.name,
       phone: data.phone,
       whatsapp: data.whatsapp || data.phone,
+      reference: data.reference || '',
+      teamName: data.teamName || '',
       notes: data.notes || '',
       openingBalance: Number(data.openingBalance) || 0,
       creditLimit: Number(data.creditLimit) || 0,
+      currentBalance: 0,
       status: 'active',
       createdAt: serverTimestamp(),
       createdBy: uid,
       lastTransactionDate: null,
-      directoryCache: null,
     })
     if (data.openingBalance && Number(data.openingBalance) > 0) {
       await this.addLedgerEntry(docRef.id, {

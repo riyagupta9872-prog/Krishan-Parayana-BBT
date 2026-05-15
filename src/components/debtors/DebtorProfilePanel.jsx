@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { debtorService } from '../../services/debtorService'
-import { lookupDevoteeByPhone } from '../../services/directoryService'
 import { fmt } from '../../utils/formatters'
 import { computeAgingForDebtor } from '../../utils/agingUtils'
-import DevoteeDirectoryModal from './DevoteeDirectoryModal'
 import ReceivePaymentModal from './ReceivePaymentModal'
 import CallingLogModal from './CallingLogModal'
 
@@ -47,23 +45,14 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
   const { isSuperAdmin } = useAuth()
   const [ledger,      setLedger]      = useState([])
   const [callingLogs, setCallingLogs] = useState([])
-  const [dirProfile,  setDirProfile]  = useState(null)
-  const [dirLoading,  setDirLoading]  = useState(true)
   const [section,     setSection]     = useState('ledger')
   const [showPay,     setShowPay]     = useState(false)
   const [showLog,     setShowLog]     = useState(false)
-  const [showDir,     setShowDir]     = useState(false)
 
   useEffect(() => {
     if (!debtor) return
     const u1 = debtorService.subscribeLedger(debtor.id, setLedger)
     const u2 = debtorService.subscribeCallingLog(debtor.id, setCallingLogs)
-    // Fetch from Sakhi Sang directory
-    setDirLoading(true)
-    lookupDevoteeByPhone(debtor.phone)
-      .then(setDirProfile)
-      .catch(() => setDirProfile(null))
-      .finally(() => setDirLoading(false))
     return () => { u1(); u2() }
   }, [debtor?.id])
 
@@ -88,30 +77,22 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 {/* Avatar */}
-                <button onClick={() => setShowDir(true)}
-                  className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center hover:bg-white/30 transition-all group relative"
-                  title="View full devotee profile">
-                  {dirProfile?.photo
-                    ? <img src={dirProfile.photo} alt="" className="w-full h-full rounded-full object-cover" />
-                    : <span className="font-display text-white font-bold text-sm">{initials}</span>
-                  }
-                  <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs shadow-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">👤</span>
-                </button>
+                <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center shrink-0">
+                  <span className="font-display text-white font-bold text-sm">{initials}</span>
+                </div>
 
                 <div>
                   <h3 className="font-display text-white font-bold text-sm">{debtor.name}</h3>
-                  {/* Directory info shown inline */}
-                  {!dirLoading && dirProfile?.teamName && (
-                    <span className="text-white/80 text-xs bg-white/15 px-2 py-0.5 rounded-pill mr-1">
-                      {dirProfile.teamName}
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {debtor.teamName && (
+                      <span className="text-white/80 text-xs bg-white/15 px-2 py-0.5 rounded-pill">
+                        {debtor.teamName}
+                      </span>
+                    )}
+                    <span className={`badge text-xs ${STATUS_CLR[debtor.status] || 'badge-gray'}`} style={{display:'inline-block'}}>
+                      {debtor.status}
                     </span>
-                  )}
-                  {!dirLoading && dirProfile?.devoteeStatus && (
-                    <span className="text-white/70 text-xs">{dirProfile.devoteeStatus}</span>
-                  )}
-                  <span className={`badge text-xs mt-0.5 block ${STATUS_CLR[debtor.status] || 'badge-gray'}`} style={{display:'inline-block'}}>
-                    {debtor.status}
-                  </span>
+                  </div>
                 </div>
               </div>
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-sm font-bold">✕</button>
@@ -130,20 +111,12 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
                     <p className="text-white/60 text-xs">WA: {fmt.phone(debtor.whatsapp)}</p>
                   )}
                 </div>
-                {dirLoading && <div className="ml-auto w-4 h-4 border border-white/30 border-t-white rounded-full animate-spin" />}
               </div>
 
-              {/* Reference by — from directory */}
-              {!dirLoading && dirProfile?.referenceBy && (
+              {debtor.reference && (
                 <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-                  <span className="text-white/50 text-xs">Referred by:</span>
-                  <span className="text-white text-xs font-semibold">{dirProfile.referenceBy}</span>
-                </div>
-              )}
-              {!dirLoading && dirProfile?.facilitator && (
-                <div className="flex items-center gap-2">
-                  <span className="text-white/50 text-xs">Facilitator:</span>
-                  <span className="text-white text-xs font-semibold">{dirProfile.facilitator}</span>
+                  <span className="text-white/50 text-xs">Reference:</span>
+                  <span className="text-white text-xs font-semibold">{debtor.reference}</span>
                 </div>
               )}
             </div>
@@ -152,7 +125,6 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
             <div className="flex gap-2 mt-2.5">
               <button onClick={() => setShowPay(true)} className="flex-1 bg-white text-primary text-xs font-semibold py-2 rounded-lg hover:bg-white/90 transition-all">💰 Pay</button>
               <button onClick={() => setShowLog(true)} className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 rounded-lg transition-all">📝 Log Call</button>
-              <button onClick={() => setShowDir(true)} className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 rounded-lg transition-all">👤 Profile</button>
             </div>
 
             {/* Balance bar */}
@@ -180,9 +152,9 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
           {/* ── Section tabs ──────────────────────────────────────── */}
           <div className="flex border-b border-border-lt bg-white shrink-0">
             {[
-              { id: 'ledger',  label: `Ledger (${ledger.length})` },
-              { id: 'calls',   label: `Calls (${callingLogs.length})` },
-              { id: 'info',    label: 'Info' },
+              { id: 'ledger', label: `Ledger (${ledger.length})` },
+              { id: 'calls',  label: `Calls (${callingLogs.length})` },
+              { id: 'info',   label: 'Info' },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => setSection(id)}
                 className={`flex-1 py-2.5 text-xs font-body font-semibold border-b-2 transition-all
@@ -239,42 +211,18 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
             )}
 
             {section === 'info' && (
-              <div className="p-4 space-y-3">
-                {/* SCIAMS data */}
+              <div className="p-4">
                 <div className="card">
-                  <h4 className="font-semibold text-ink-2 text-sm mb-3 flex items-center gap-2">💳 Account Info</h4>
+                  <h4 className="font-semibold text-ink-2 text-sm mb-3">💳 Account Info</h4>
                   <dl className="space-y-2 text-sm">
                     <div className="flex justify-between"><dt className="text-ink-3">Phone</dt><dd className="text-ink font-medium">{fmt.phone(debtor.phone)}</dd></div>
-                    <div className="flex justify-between"><dt className="text-ink-3">WhatsApp</dt><dd className="text-ink font-medium">{fmt.phone(debtor.whatsapp || debtor.phone)}</dd></div>
+                    {debtor.reference && <div className="flex justify-between"><dt className="text-ink-3">Reference</dt><dd className="text-ink font-medium">{debtor.reference}</dd></div>}
+                    {debtor.teamName  && <div className="flex justify-between"><dt className="text-ink-3">Team</dt><dd className="text-ink font-medium">{debtor.teamName}</dd></div>}
                     {isSuperAdmin && <div className="flex justify-between"><dt className="text-ink-3">Credit Limit</dt><dd className="text-ink font-medium">{debtor.creditLimit > 0 ? fmt.currency(debtor.creditLimit) : 'No Limit'}</dd></div>}
                     {debtor.notes && <div><dt className="text-ink-3 block mb-0.5">Notes</dt><dd className="text-ink">{debtor.notes}</dd></div>}
                     <div className="flex justify-between"><dt className="text-ink-3">Added on</dt><dd className="text-ink">{fmt.date(debtor.createdAt)}</dd></div>
                   </dl>
                 </div>
-
-                {/* Directory quick-view */}
-                {!dirLoading && dirProfile && (
-                  <div className="card border-border-blue bg-primary-lt">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-primary text-sm flex items-center gap-2">📂 Directory Profile</h4>
-                      <button onClick={() => setShowDir(true)} className="text-primary text-xs font-semibold underline">View Full →</button>
-                    </div>
-                    <dl className="space-y-1.5 text-sm">
-                      {dirProfile.teamName      && <div className="flex justify-between"><dt className="text-ink-3">Team</dt><dd className="text-ink font-medium">{dirProfile.teamName}</dd></div>}
-                      {dirProfile.devoteeStatus && <div className="flex justify-between"><dt className="text-ink-3">Status</dt><dd className="text-ink font-medium">{dirProfile.devoteeStatus}</dd></div>}
-                      {dirProfile.referenceBy   && <div className="flex justify-between"><dt className="text-ink-3">Referred By</dt><dd className="text-primary font-semibold">{dirProfile.referenceBy}</dd></div>}
-                      {dirProfile.facilitator   && <div className="flex justify-between"><dt className="text-ink-3">Facilitator</dt><dd className="text-ink font-medium">{dirProfile.facilitator}</dd></div>}
-                      {dirProfile.chantingRounds > 0 && <div className="flex justify-between"><dt className="text-ink-3">Chanting</dt><dd className="text-ink font-medium">{dirProfile.chantingRounds} rounds</dd></div>}
-                      {dirProfile.address       && <div><dt className="text-ink-3 block mb-0.5">Address</dt><dd className="text-ink">{dirProfile.address}</dd></div>}
-                    </dl>
-                  </div>
-                )}
-                {!dirLoading && !dirProfile && (
-                  <div className="card border-dashed text-center py-4">
-                    <p className="text-ink-4 text-xs">Not found in Sakhi Sang directory</p>
-                    <button onClick={() => setShowDir(true)} className="text-primary text-xs font-semibold mt-1">Search again →</button>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -282,9 +230,8 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
       </div>
 
       {/* Sub-modals */}
-      <ReceivePaymentModal   isOpen={showPay} onClose={() => setShowPay(false)} debtor={debtor} />
-      <CallingLogModal       isOpen={showLog} onClose={() => setShowLog(false)} debtor={debtor} callingLogs={callingLogs} />
-      {showDir && <DevoteeDirectoryModal phone={debtor.phone} name={debtor.name} onClose={() => setShowDir(false)} />}
+      <ReceivePaymentModal isOpen={showPay} onClose={() => setShowPay(false)} debtor={debtor} />
+      <CallingLogModal     isOpen={showLog} onClose={() => setShowLog(false)} debtor={debtor} callingLogs={callingLogs} />
     </>
   )
 }

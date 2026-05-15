@@ -36,62 +36,102 @@ function BasketRow({ entry, items, onUpdate, onRemove }) {
 
 /* ─── Product picker ─────────────────────────────────────────────── */
 function ProductPicker({ items, basket, onAdd }) {
-  const [search, setSearch]   = useState('')
-  const [catGrp, setCatGrp]   = useState('All')
+  const [search,       setSearch]       = useState('')
+  const [variantGroup, setVariantGroup] = useState(null)
 
-  const GROUPS = {
-    All: null,
-    Apparel: ['Gopi Dress','Kurta','Dhoti'],
-    Accessories: ['Kanthi Mala','Japa Mala','Bead Bag','Hare Krishna Card','Gopi Chandan'],
-    Books: ['Book'],
+  const active = items.filter((i) => i.status === 'active' && i.qty > 0)
+  const filtered = active.filter((i) => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return i.name.toLowerCase().includes(q) ||
+      i.subVariant?.toLowerCase().includes(q) ||
+      (i.productGroup || i.category || '').toLowerCase().includes(q)
+  })
+
+  // Group by productGroup (falling back to category then name)
+  const groupMap = {}
+  filtered.forEach((item) => {
+    const key = item.productGroup || item.category || item.name
+    if (!groupMap[key]) groupMap[key] = []
+    groupMap[key].push(item)
+  })
+  const groups = Object.entries(groupMap).sort(([a], [b]) => a.localeCompare(b))
+
+  const basketQtyForGroup = (grpItems) =>
+    grpItems.reduce((s, i) => s + (basket.find((b) => b.skuId === i.id)?.qty || 0), 0)
+
+  const handleGroupClick = (grpName, grpItems) => {
+    if (grpItems.length === 1) {
+      onAdd(grpItems[0])
+    } else {
+      setVariantGroup({ name: grpName, items: grpItems })
+    }
   }
-
-  const cats = GROUPS[catGrp]
-  const filtered = items
-    .filter((i) => i.status === 'active' && i.qty > 0)
-    .filter((i) => !cats || cats.includes(i.category))
-    .filter((i) => !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.subCategory?.toLowerCase().includes(search.toLowerCase()))
-
-  const inBasket = (id) => basket.find((b) => b.skuId === id)
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 text-sm">🔍</span>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-9 text-sm" placeholder="Search product…" autoFocus />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {Object.keys(GROUPS).map((g) => (
-            <button key={g} onClick={() => setCatGrp(g)}
-              className={`px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all
-                ${catGrp===g?'bg-primary text-white border-primary':'bg-white border-border-lt text-ink-3'}`}>
-              {g}
-            </button>
-          ))}
-        </div>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 text-sm">🔍</span>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-9 text-sm" placeholder="Search product…" autoFocus />
       </div>
 
+      {/* Variant chooser overlay */}
+      {variantGroup && (
+        <div className="border border-border-blue bg-primary-lt rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-primary font-semibold text-sm">Select variant of <span className="font-bold">{variantGroup.name}</span></p>
+            <button onClick={() => setVariantGroup(null)} className="text-ink-4 hover:text-ink text-lg leading-none">✕</button>
+          </div>
+          <div className="grid grid-cols-1 gap-1.5">
+            {variantGroup.items.map((item) => {
+              const inB = basket.find((b) => b.skuId === item.id)
+              const isLow = item.qty <= (item.lowStockThreshold || 5)
+              return (
+                <button key={item.id}
+                  onClick={() => { onAdd(item); setVariantGroup(null) }}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all
+                    ${inB ? 'border-primary bg-white' : 'border-border-lt bg-white hover:border-primary'}`}>
+                  <div>
+                    <p className="text-ink font-semibold text-xs">{item.subVariant || item.name}</p>
+                    <p className="text-ink-3 text-xs">{fmt.currency(item.sellingPrice)}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className={`badge text-xs ${isLow ? 'badge-amber' : 'badge-green'}`}>{item.qty} left</span>
+                    {inB && <p className="text-primary text-xs font-bold mt-0.5">×{inB.qty} in basket</p>}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-        {filtered.length === 0 && <p className="col-span-2 text-ink-3 text-sm text-center py-6">No products found.</p>}
-        {filtered.map((item) => {
-          const alreadyIn = inBasket(item.id)
-          const isLow = item.qty <= (item.lowStockThreshold || 5)
+        {groups.length === 0 && <p className="col-span-2 text-ink-3 text-sm text-center py-6">No products found.</p>}
+        {groups.map(([grpName, grpItems]) => {
+          const hasVariants = grpItems.length > 1
+          const firstItem   = grpItems[0]
+          const inBasketQty = basketQtyForGroup(grpItems)
+          const totalStock  = grpItems.reduce((s, i) => s + i.qty, 0)
+          const isLow       = totalStock <= (firstItem.lowStockThreshold || 5)
           return (
-            <button key={item.id} onClick={() => onAdd(item)}
+            <button key={grpName}
+              onClick={() => handleGroupClick(grpName, grpItems)}
               className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all
-                ${alreadyIn ? 'border-primary bg-primary-lt' : 'border-border-lt bg-white hover:border-primary hover:shadow-sm'}`}>
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0
-                ${item.category==='Book'?'bg-violet-100':['Gopi Dress','Kurta','Dhoti'].includes(item.category)?'bg-blue-100':'bg-sky-100'}`}>
-                {item.category==='Book'?'📚':['Gopi Dress','Kurta','Dhoti'].includes(item.category)?'👘':'📿'}
+                ${inBasketQty > 0 ? 'border-primary bg-primary-lt' : 'border-border-lt bg-white hover:border-primary hover:shadow-sm'}`}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-sky-100">
+                {hasVariants ? '📦' : '🏷️'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-ink font-semibold text-xs truncate">{item.name}</p>
-                <p className="text-ink-3 text-xs">{fmt.currency(item.sellingPrice)}</p>
+                <p className="text-ink font-semibold text-xs truncate">{grpName}</p>
+                {hasVariants
+                  ? <p className="text-ink-3 text-xs">{grpItems.length} variants · tap to choose</p>
+                  : <p className="text-ink-3 text-xs">{fmt.currency(firstItem.sellingPrice)}{firstItem.subVariant ? ` · ${firstItem.subVariant}` : ''}</p>
+                }
               </div>
               <div className="text-right shrink-0">
-                <span className={`badge text-xs ${isLow?'badge-amber':'badge-green'}`}>{item.qty}</span>
-                {alreadyIn && <p className="text-primary text-xs font-bold mt-0.5">×{alreadyIn.qty}</p>}
+                <span className={`badge text-xs ${isLow ? 'badge-amber' : 'badge-green'}`}>{totalStock}</span>
+                {inBasketQty > 0 && <p className="text-primary text-xs font-bold mt-0.5">×{inBasketQty}</p>}
               </div>
             </button>
           )

@@ -1,16 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { debtorService } from '../../services/debtorService'
 import { auditService } from '../../services/auditService'
-import { lookupDevoteeByPhone } from '../../services/directoryService'
 import { useFirestoreSubscription } from '../../hooks/useFirestore'
 import { fmt } from '../../utils/formatters'
 import { PageLoader } from '../common/LoadingSpinner'
 import FirestoreRulesAlert from '../common/FirestoreRulesAlert'
 import AddDebtorModal from './AddDebtorModal'
 import DebtorProfilePanel from './DebtorProfilePanel'
-import DevoteeDirectoryModal from './DevoteeDirectoryModal'
 
 const STATUS_BADGE = {
   active: 'badge-blue', settled: 'badge-green', blocked: 'badge-red', credit: 'badge-amber',
@@ -35,23 +33,22 @@ function DebtorCard({ debtor, onView }) {
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          {/* Name + status */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-ink font-bold text-sm">{debtor.name}</span>
             <span className={`badge text-xs ${STATUS_BADGE[debtor.status] || 'badge-gray'}`}>{debtor.status}</span>
           </div>
 
-          {/* Phone — always visible */}
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-ink-3 text-xs">📞</span>
             <span className="text-ink-2 text-xs font-medium">{fmt.phone(debtor.phone)}</span>
           </div>
 
-          {/* Reference (from notes field or directory) */}
-          {debtor.notes && (
-            <p className="text-ink-4 text-xs mt-0.5 truncate">📌 {debtor.notes}</p>
+          {debtor.reference && (
+            <p className="text-ink-4 text-xs mt-0.5 truncate">📌 {debtor.reference}</p>
           )}
-
+          {debtor.teamName && (
+            <p className="text-ink-4 text-xs mt-0.5 truncate">👥 {debtor.teamName}</p>
+          )}
           {daysSince !== null && (
             <p className="text-ink-4 text-xs mt-0.5">Last txn {daysSince}d ago</p>
           )}
@@ -91,33 +88,19 @@ export default function DebtorsTab() {
   const [blockTarget,  setBlockTarget]  = useState(null)
   const [blockReason,  setBlockReason]  = useState('')
   const [blockLoading, setBlockLoading] = useState(false)
-  // Directory quick-lookup from search
-  const [dirResult,    setDirResult]    = useState(null)
-  const [dirSearching, setDirSearching] = useState(false)
 
   const { data: debtors, loading, error } = useFirestoreSubscription(
     (cb, e) => debtorService.subscribe(cb, e)
   )
 
-  // If search looks like a phone number, also lookup in directory
-  useEffect(() => {
-    const q = search.replace(/\D/g, '')
-    if (q.length === 10) {
-      setDirSearching(true)
-      lookupDevoteeByPhone(q)
-        .then(setDirResult)
-        .catch(() => setDirResult(null))
-        .finally(() => setDirSearching(false))
-    } else {
-      setDirResult(null)
-    }
-  }, [search])
-
   if (loading) return <PageLoader />
 
   let filtered = debtors.filter((d) => {
     const q = search.toLowerCase()
-    return (!search || d.name.toLowerCase().includes(q) || d.phone?.includes(search.replace(/\D/g,''))) &&
+    return (!search || d.name.toLowerCase().includes(q) ||
+      d.phone?.includes(search.replace(/\D/g, '')) ||
+      d.reference?.toLowerCase().includes(q) ||
+      d.teamName?.toLowerCase().includes(q)) &&
       (statusFilter === 'all' || d.status === statusFilter)
   })
   if      (sort === 'balance') filtered.sort((a, b) => (b.currentBalance||0) - (a.currentBalance||0))
@@ -174,8 +157,7 @@ export default function DebtorsTab() {
         <div className="relative flex-1">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 text-sm">🔍</span>
           <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-9"
-            placeholder="Search by name or phone number…" />
-          {dirSearching && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border border-primary/20 border-t-primary rounded-full animate-spin" />}
+            placeholder="Search by name, phone, reference, team…" />
         </div>
         <div className="flex gap-2 flex-wrap">
           {['all','active','settled','blocked','credit'].map((s) => (
@@ -192,21 +174,6 @@ export default function DebtorsTab() {
           <option value="days">Days Overdue</option>
         </select>
       </div>
-
-      {/* Directory lookup result when searching by phone */}
-      {dirResult && !filtered.find(d => d.phone === dirResult.mobile) && (
-        <div className="card border-border-blue bg-primary-lt">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-ink font-semibold text-sm">📂 Found in Devotee Directory</p>
-              <p className="text-primary font-bold">{dirResult.name}</p>
-              <p className="text-ink-3 text-xs">{fmt.phone(dirResult.mobile)} {dirResult.teamName ? `· ${dirResult.teamName}` : ''}</p>
-              {dirResult.referenceBy && <p className="text-ink-3 text-xs">Referred by: <span className="text-ink font-semibold">{dirResult.referenceBy}</span></p>}
-            </div>
-            <button onClick={() => setShowAdd(true)} className="btn-primary text-xs px-3">+ Add as Debtor</button>
-          </div>
-        </div>
-      )}
 
       {/* Cards */}
       {filtered.length === 0 ? (
