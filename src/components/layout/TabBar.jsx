@@ -9,7 +9,6 @@ const USER_TABS = [
   { id: 'aging',      label: 'Aging',      icon: '📊' },
 ]
 const ADMIN_TABS = [
-  { id: 'rates', label: 'Rates', icon: '₹'  },
   { id: 'admin', label: 'Admin', icon: '🔐' },
 ]
 

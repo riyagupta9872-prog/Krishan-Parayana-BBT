@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { inventoryService, ALL_CATEGORIES, CATEGORIES } from '../../services/inventoryService'
@@ -10,6 +10,121 @@ import { PageLoader } from '../common/LoadingSpinner'
 import FirestoreRulesAlert from '../common/FirestoreRulesAlert'
 import Modal from '../common/Modal'
 import AddItemModal from './AddItemModal'
+
+/* ─── Price Edit Panel ───────────────────────────────────────────── */
+function PriceEditPanel({ item, onClose, onFullEdit }) {
+  const { user } = useAuth()
+  const { showToast } = useApp()
+  const [selling,  setSelling]  = useState(item.sellingPrice || '')
+  const [cost,     setCost]     = useState(item.costPrice    || '')
+  const [reason,   setReason]   = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [history,  setHistory]  = useState([])
+
+  useEffect(() => {
+    const unsub = auditService.subscribePriceHistoryForItem(item.id, setHistory)
+    return () => unsub()
+  }, [item.id])
+
+  const margin = selling && cost ? Math.round(((Number(selling) - Number(cost)) / Number(selling)) * 100) : null
+
+  const handleSave = async () => {
+    if (!selling || Number(selling) <= 0) { showToast('Selling price must be > 0', 'error'); return }
+    if (reason.trim().length < 10) { showToast('Reason must be at least 10 characters', 'error'); return }
+    setLoading(true)
+    try {
+      await inventoryService.update(item.id, { sellingPrice: Number(selling), costPrice: Number(cost || 0) })
+      await auditService.logPriceChange(item.id, item.name, item.sellingPrice, Number(selling), reason, user.uid)
+      showToast('Price updated', 'success')
+      setReason('')
+    } catch (err) { showToast(err.message, 'error') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm h-full bg-white border-l border-border-lt shadow-modal flex flex-col animate-slide-in">
+
+        {/* Header */}
+        <div className="bg-gradient-to-br from-primary to-primary-dk px-4 py-4 shrink-0">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-display text-white font-bold text-sm leading-tight">{item.name}</h3>
+              {item.subVariant && <p className="text-white/70 text-xs mt-0.5">{item.subVariant}</p>}
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-white/60 text-xs">Current MRP:</span>
+                <span className="text-white font-bold">{fmt.currency(item.sellingPrice)}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={onFullEdit} className="text-xs bg-white/20 hover:bg-white/30 text-white px-2.5 py-1.5 rounded-lg transition-all">
+                ✏ Full Edit
+              </button>
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-sm font-bold">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto bg-panel-bg">
+          {/* Price editor */}
+          <div className="p-4 space-y-3">
+            <h4 className="font-body font-semibold text-ink text-sm flex items-center gap-2">₹ Update Price</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Selling Price (₹) *</label>
+                <input type="number" value={selling} onChange={(e) => setSelling(e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0.01} />
+              </div>
+              <div>
+                <label className="label">Cost Price (₹)</label>
+                <input type="number" value={cost} onChange={(e) => setCost(e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0} />
+              </div>
+            </div>
+            {margin !== null && (
+              <p className={`text-xs font-medium ${margin < 0 ? 'text-danger' : margin < 20 ? 'text-warning' : 'text-success'}`}>
+                Margin: {margin}%
+              </p>
+            )}
+            <div>
+              <label className="label">Reason for change * (min 10 chars)</label>
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input-field resize-none text-sm" rows={2} placeholder="e.g. New supplier rate, Festival discount…" />
+            </div>
+            <button onClick={handleSave} disabled={loading} className="btn-primary w-full">
+              {loading ? 'Saving…' : 'Update Price'}
+            </button>
+          </div>
+
+          {/* Price history */}
+          <div className="px-4 pb-4 space-y-2">
+            <h4 className="font-body font-semibold text-ink text-sm flex items-center gap-2 border-t border-border-lt pt-4">
+              🕐 Price History
+            </h4>
+            {history.length === 0 ? (
+              <p className="text-ink-4 text-xs text-center py-4">No price changes recorded yet</p>
+            ) : (
+              history.map((entry) => (
+                <div key={entry.id} className="card p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-ink-3 text-sm font-medium">{fmt.currency(entry.oldPrice)}</span>
+                      <span className="text-ink-4 text-xs">→</span>
+                      <span className="font-bold text-primary text-sm">{fmt.currency(entry.newPrice)}</span>
+                      <span className={`badge text-xs ${entry.newPrice > entry.oldPrice ? 'badge-red' : 'badge-green'}`}>
+                        {entry.newPrice > entry.oldPrice ? '↑' : '↓'}{Math.round(Math.abs(entry.newPrice - entry.oldPrice) / (entry.oldPrice || 1) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-ink-3 text-xs italic">"{entry.reason}"</p>
+                  <p className="text-ink-4 text-xs">{fmt.dateTime(entry.timestamp)}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ─── Sub-tab constants ──────────────────────────────────────────── */
 const SUB_TABS = [
@@ -33,7 +148,8 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
   const [catGrp,      setCatGrp]      = useState('All')
   const [sort,        setSort]        = useState('name')
   const [showAdd,     setShowAdd]     = useState(false)
-  const [editItem,    setEditItem]    = useState(null)
+  const [editItem,    setEditItem]    = useState(null)   // full edit modal
+  const [priceItem,   setPriceItem]   = useState(null)   // price+history panel
   const [confirmDel,  setConfirmDel]  = useState(null)
 
   const handleDelete = async (item) => {
@@ -178,8 +294,8 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                   </div>
                   {isSuperAdmin && (
                     <div className="flex gap-1 shrink-0">
-                      <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7">±</button>
-                      <button onClick={() => { setEditItem(item) }} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7">✏</button>
+                      <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning">±</button>
+                      <button onClick={() => setPriceItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-primary">✏</button>
                     </div>
                   )}
                 </div>
@@ -210,7 +326,7 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                     {isSuperAdmin && (
                       <>
                         <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning" title="Adjust stock">±</button>
-                        <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7" title="Edit">✏</button>
+                        <button onClick={() => setPriceItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-primary" title="Edit price & history">✏</button>
                         <button onClick={() => handleToggleActive(item)}
                           className={`btn-ghost text-xs px-2 py-1 min-h-0 h-7 ${item.status === 'inactive' ? 'text-success' : 'text-ink-3'}`}
                           title={item.status === 'inactive' ? 'Mark active' : 'Mark inactive'}>
@@ -228,6 +344,14 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
       )}
 
       <AddItemModal isOpen={showAdd || !!editItem} onClose={() => { setShowAdd(false); setEditItem(null) }} editItem={editItem} />
+
+      {priceItem && (
+        <PriceEditPanel
+          item={priceItem}
+          onClose={() => setPriceItem(null)}
+          onFullEdit={() => { setEditItem(priceItem); setPriceItem(null) }}
+        />
+      )}
 
       {/* Delete confirmation */}
       {confirmDel && (

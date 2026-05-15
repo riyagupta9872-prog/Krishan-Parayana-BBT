@@ -10,7 +10,6 @@ import InventoryManagement from './components/inventory/InventoryManagement'
 import SalesTab from './components/sales/SalesTab'
 import DebtorsTab from './components/debtors/DebtorsTab'
 import AgingReport from './components/aging/AgingReport'
-import RatesTab from './components/rates/RatesTab'
 import AdminLog from './components/admin/AdminLog'
 
 function TabContent({ tab, isSuperAdmin }) {
@@ -20,7 +19,7 @@ function TabContent({ tab, isSuperAdmin }) {
     sales:     <SalesTab />,
     debtors:   <DebtorsTab />,
     aging:     <AgingReport />,
-    ...(isSuperAdmin ? { rates: <RatesTab />, admin: <AdminLog /> } : {}),
+    ...(isSuperAdmin ? { admin: <AdminLog /> } : {}),
   }
   return map[tab] || (
     <div className="flex-1 flex items-center justify-center p-8">

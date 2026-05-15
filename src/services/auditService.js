@@ -1,6 +1,6 @@
 import {
   collection, addDoc, getDocs, onSnapshot,
-  serverTimestamp, query, orderBy, limit
+  serverTimestamp, query, orderBy, limit, where
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -40,5 +40,14 @@ export const auditService = {
       itemId, itemName, oldPrice, newPrice, reason,
       adminUid, timestamp: serverTimestamp(),
     })
+  },
+
+  subscribePriceHistoryForItem(itemId, callback, onError) {
+    const q = query(collection(db, PRICE_COL), where('itemId', '==', itemId), orderBy('timestamp', 'desc'), limit(50))
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { callback([]); onError?.(err) }
+    )
   },
 }
