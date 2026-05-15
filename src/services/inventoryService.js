@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs,
+  collection, doc, addDoc, updateDoc, getDocs, deleteDoc,
   onSnapshot, serverTimestamp, query, where, orderBy, getDoc, increment
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -40,6 +40,14 @@ export const inventoryService = {
 
   async update(id, data) {
     return updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+  },
+
+  async delete(id) {
+    return deleteDoc(doc(db, COL, id))
+  },
+
+  async setStatus(id, status) {
+    return updateDoc(doc(db, COL, id), { status, updatedAt: serverTimestamp() })
   },
 
   async adjustStock(id, delta, reason, adminUid, currentQty) {

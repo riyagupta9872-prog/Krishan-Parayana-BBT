@@ -39,7 +39,8 @@ function ProductPicker({ items, basket, onAdd }) {
   const [search,       setSearch]       = useState('')
   const [variantGroup, setVariantGroup] = useState(null)
 
-  const active = items.filter((i) => i.status === 'active' && i.qty > 0)
+  // Show ALL active items (including 0-stock) so user can see what's available
+  const active = items.filter((i) => i.status === 'active')
   const filtered = active.filter((i) => {
     if (!search) return true
     const q = search.toLowerCase()
@@ -48,7 +49,7 @@ function ProductPicker({ items, basket, onAdd }) {
       (i.productGroup || i.category || '').toLowerCase().includes(q)
   })
 
-  // Group by productGroup (falling back to category then name)
+  // Group by productGroup
   const groupMap = {}
   filtered.forEach((item) => {
     const key = item.productGroup || item.category || item.name
@@ -61,8 +62,10 @@ function ProductPicker({ items, basket, onAdd }) {
     grpItems.reduce((s, i) => s + (basket.find((b) => b.skuId === i.id)?.qty || 0), 0)
 
   const handleGroupClick = (grpName, grpItems) => {
-    if (grpItems.length === 1) {
-      onAdd(grpItems[0])
+    const available = grpItems.filter(i => i.qty > 0)
+    if (available.length === 0) return // all out of stock
+    if (available.length === 1 && grpItems.length === 1) {
+      onAdd(available[0])
     } else {
       setVariantGroup({ name: grpName, items: grpItems })
     }
@@ -75,37 +78,6 @@ function ProductPicker({ items, basket, onAdd }) {
         <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-9 text-sm" placeholder="Search product…" autoFocus />
       </div>
 
-      {/* Variant chooser overlay */}
-      {variantGroup && (
-        <div className="border border-border-blue bg-primary-lt rounded-xl p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-primary font-semibold text-sm">Select variant of <span className="font-bold">{variantGroup.name}</span></p>
-            <button onClick={() => setVariantGroup(null)} className="text-ink-4 hover:text-ink text-lg leading-none">✕</button>
-          </div>
-          <div className="grid grid-cols-1 gap-1.5">
-            {variantGroup.items.map((item) => {
-              const inB = basket.find((b) => b.skuId === item.id)
-              const isLow = item.qty <= (item.lowStockThreshold || 5)
-              return (
-                <button key={item.id}
-                  onClick={() => { onAdd(item); setVariantGroup(null) }}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all
-                    ${inB ? 'border-primary bg-white' : 'border-border-lt bg-white hover:border-primary'}`}>
-                  <div>
-                    <p className="text-ink font-semibold text-xs">{item.subVariant || item.name}</p>
-                    <p className="text-ink-3 text-xs">{fmt.currency(item.sellingPrice)}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className={`badge text-xs ${isLow ? 'badge-amber' : 'badge-green'}`}>{item.qty} left</span>
-                    {inB && <p className="text-primary text-xs font-bold mt-0.5">×{inB.qty} in basket</p>}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
         {groups.length === 0 && <p className="col-span-2 text-ink-3 text-sm text-center py-6">No products found.</p>}
         {groups.map(([grpName, grpItems]) => {
@@ -113,30 +85,78 @@ function ProductPicker({ items, basket, onAdd }) {
           const firstItem   = grpItems[0]
           const inBasketQty = basketQtyForGroup(grpItems)
           const totalStock  = grpItems.reduce((s, i) => s + i.qty, 0)
-          const isLow       = totalStock <= (firstItem.lowStockThreshold || 5)
+          const isOut       = totalStock === 0
+          const isLow       = !isOut && totalStock <= (firstItem.lowStockThreshold || 5)
           return (
             <button key={grpName}
               onClick={() => handleGroupClick(grpName, grpItems)}
+              disabled={isOut}
               className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all
-                ${inBasketQty > 0 ? 'border-primary bg-primary-lt' : 'border-border-lt bg-white hover:border-primary hover:shadow-sm'}`}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-sky-100">
+                ${isOut ? 'border-border-lt bg-slate-50 opacity-60 cursor-not-allowed' :
+                  inBasketQty > 0 ? 'border-primary bg-primary-lt' :
+                  'border-border-lt bg-white hover:border-primary hover:shadow-sm'}`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0
+                ${isOut ? 'bg-slate-100' : 'bg-sky-100'}`}>
                 {hasVariants ? '📦' : '🏷️'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-ink font-semibold text-xs truncate">{grpName}</p>
-                {hasVariants
-                  ? <p className="text-ink-3 text-xs">{grpItems.length} variants · tap to choose</p>
-                  : <p className="text-ink-3 text-xs">{fmt.currency(firstItem.sellingPrice)}{firstItem.subVariant ? ` · ${firstItem.subVariant}` : ''}</p>
+                <p className={`font-semibold text-xs truncate ${isOut ? 'text-ink-4' : 'text-ink'}`}>{grpName}</p>
+                {isOut
+                  ? <p className="text-danger text-xs font-medium">Stock Out</p>
+                  : hasVariants
+                    ? <p className="text-ink-3 text-xs">{grpItems.length} variants · tap to choose</p>
+                    : <p className="text-ink-3 text-xs">{fmt.currency(firstItem.sellingPrice)}{firstItem.subVariant ? ` · ${firstItem.subVariant}` : ''}</p>
                 }
               </div>
               <div className="text-right shrink-0">
-                <span className={`badge text-xs ${isLow ? 'badge-amber' : 'badge-green'}`}>{totalStock}</span>
+                <span className={`badge text-xs ${isOut ? 'badge-red' : isLow ? 'badge-amber' : 'badge-green'}`}>
+                  {totalStock}
+                </span>
                 {inBasketQty > 0 && <p className="text-primary text-xs font-bold mt-0.5">×{inBasketQty}</p>}
               </div>
             </button>
           )
         })}
       </div>
+
+      {/* Variant chooser — modal overlay so it doesn't shift the grid */}
+      {variantGroup && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-ink/40 backdrop-blur-sm"
+          onClick={() => setVariantGroup(null)}>
+          <div className="bg-white w-full sm:max-w-sm rounded-t-modal sm:rounded-modal shadow-modal p-5 space-y-3 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <p className="font-body font-semibold text-ink text-base">Select variant — <span className="text-primary">{variantGroup.name}</span></p>
+              <button onClick={() => setVariantGroup(null)} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-ink-3 text-sm">✕</button>
+            </div>
+            <div className="space-y-2">
+              {variantGroup.items.map((item) => {
+                const inB   = basket.find((b) => b.skuId === item.id)
+                const isOut = item.qty === 0
+                const isLow = !isOut && item.qty <= (item.lowStockThreshold || 5)
+                return (
+                  <button key={item.id}
+                    onClick={() => { if (!isOut) { onAdd(item); setVariantGroup(null) } }}
+                    disabled={isOut}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left transition-all
+                      ${isOut ? 'border-border-lt bg-slate-50 opacity-50 cursor-not-allowed' :
+                        inB ? 'border-primary bg-primary-lt' :
+                        'border-border-lt bg-white hover:border-primary hover:bg-primary-lt'}`}>
+                    <div>
+                      <p className={`font-semibold text-sm ${isOut ? 'text-ink-4' : 'text-ink'}`}>{item.subVariant || item.name}</p>
+                      <p className="text-ink-3 text-xs">{isOut ? 'Stock Out' : fmt.currency(item.sellingPrice)}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`badge text-xs ${isOut ? 'badge-red' : isLow ? 'badge-amber' : 'badge-green'}`}>{item.qty}</span>
+                      {inB && <p className="text-primary text-xs font-bold mt-0.5">×{inB.qty} in basket</p>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

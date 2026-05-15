@@ -28,11 +28,29 @@ const CAT_GROUPS = {
 
 /* ─── Catalog sub-tab ────────────────────────────────────────────── */
 function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
-  const [search,  setSearch]  = useState('')
-  const [catGrp,  setCatGrp]  = useState('All')
-  const [sort,    setSort]    = useState('name')
-  const [showAdd, setShowAdd] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const { showToast } = useApp()
+  const [search,      setSearch]      = useState('')
+  const [catGrp,      setCatGrp]      = useState('All')
+  const [sort,        setSort]        = useState('name')
+  const [showAdd,     setShowAdd]     = useState(false)
+  const [editItem,    setEditItem]    = useState(null)
+  const [confirmDel,  setConfirmDel]  = useState(null)
+
+  const handleDelete = async (item) => {
+    try {
+      await inventoryService.delete(item.id)
+      showToast(`${item.name} deleted`, 'success')
+      setConfirmDel(null)
+    } catch (err) { showToast(err.message, 'error') }
+  }
+
+  const handleToggleActive = async (item) => {
+    const next = item.status === 'active' ? 'inactive' : 'active'
+    try {
+      await inventoryService.setStatus(item.id, next)
+      showToast(`${item.name} marked ${next}`, 'success')
+    } catch (err) { showToast(err.message, 'error') }
+  }
 
   const SORT_FNS = {
     name:      (a, b) => a.name.localeCompare(b.name),
@@ -123,7 +141,7 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
         /* Table-style layout */
         <div className="card overflow-hidden p-0">
           {/* Header row */}
-          <div className="hidden sm:grid grid-cols-[2fr_1fr_80px_80px_90px_100px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-border-lt text-xs font-semibold text-ink-3 uppercase tracking-wide">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_80px_80px_90px_140px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-border-lt text-xs font-semibold text-ink-3 uppercase tracking-wide">
             <span>Product</span><span>Category</span>
             <span className="text-center">Qty</span>
             <span className="text-right">Price</span>
@@ -167,15 +185,15 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                 </div>
 
                 {/* Desktop table row */}
-                <div className="hidden sm:grid grid-cols-[2fr_1fr_80px_80px_90px_100px] gap-3 items-center">
+                <div className="hidden sm:grid grid-cols-[2fr_1fr_80px_80px_90px_140px] gap-3 items-center">
                   <div className="min-w-0">
-                    <p className="text-ink font-semibold text-sm truncate">{item.name}</p>
-                    {item.subCategory && <p className="text-ink-4 text-xs">{item.subCategory}</p>}
+                    <p className={`font-semibold text-sm truncate ${item.status === 'inactive' ? 'text-ink-4 line-through' : 'text-ink'}`}>{item.name}</p>
+                    {item.subVariant && <p className="text-ink-4 text-xs">{item.subVariant}</p>}
                     {item.author && <p className="text-ink-4 text-xs italic">{item.author}</p>}
                   </div>
                   <div>
                     <span className="text-ink-3 text-xs">{item.category}</span>
-                    {item.status !== 'active' && <span className="badge badge-gray text-xs ml-1 capitalize">{item.status}</span>}
+                    {item.status !== 'active' && <span className={`badge text-xs ml-1 capitalize ${item.status === 'inactive' ? 'badge-gray' : 'badge-amber'}`}>{item.status}</span>}
                   </div>
                   <div className="text-center">
                     <span className={`badge text-xs ${isOut ? 'badge-red' : isLow ? 'badge-amber' : 'badge-green'}`}>
@@ -191,8 +209,14 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                   <div className="flex gap-1 justify-end">
                     {isSuperAdmin && (
                       <>
-                        <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning">± Adj</button>
-                        <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7">Edit</button>
+                        <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning" title="Adjust stock">±</button>
+                        <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7" title="Edit">✏</button>
+                        <button onClick={() => handleToggleActive(item)}
+                          className={`btn-ghost text-xs px-2 py-1 min-h-0 h-7 ${item.status === 'inactive' ? 'text-success' : 'text-ink-3'}`}
+                          title={item.status === 'inactive' ? 'Mark active' : 'Mark inactive'}>
+                          {item.status === 'inactive' ? '✓' : '⊘'}
+                        </button>
+                        <button onClick={() => setConfirmDel(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-danger" title="Delete">🗑</button>
                       </>
                     )}
                   </div>
@@ -204,6 +228,21 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
       )}
 
       <AddItemModal isOpen={showAdd || !!editItem} onClose={() => { setShowAdd(false); setEditItem(null) }} editItem={editItem} />
+
+      {/* Delete confirmation */}
+      {confirmDel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
+          <div className="bg-white rounded-modal shadow-modal border border-border-lt p-6 w-full max-w-sm animate-slide-up">
+            <h3 className="font-semibold text-ink text-base mb-1">Delete "{confirmDel.name}"?</h3>
+            <p className="text-ink-3 text-sm mb-1">This removes it from inventory and sales permanently.</p>
+            <p className="text-ink-4 text-xs mb-4">Debtor ledger entries referencing this item are <strong>not</strong> affected.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDel(null)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={() => handleDelete(confirmDel)} className="btn-danger flex-1">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
