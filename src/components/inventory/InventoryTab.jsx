@@ -37,7 +37,7 @@ function StockAdjustModal({ item, onClose }) {
         <p className="text-ink-3 text-xs">Current stock: <span className="text-ink font-bold">{item.qty}</span></p>
         <div>
           <label className="label">Adjustment (+/−)</label>
-          <input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} className="input-field" />
+          <input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} onFocus={(e) => e.target.select()} className="input-field" />
           {delta !== 0 && <p className="text-xs mt-1">New qty: <span className={item.qty+delta<0?'text-danger font-bold':'text-success font-bold'}>{item.qty+delta}</span></p>}
         </div>
         <div>

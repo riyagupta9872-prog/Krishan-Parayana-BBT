@@ -78,19 +78,19 @@ export default function AddItemModal({ isOpen, onClose, editItem = null }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Selling Price (₹) *</label>
-            <input type="number" value={form.sellingPrice} onChange={(e) => set('sellingPrice', e.target.value)} className="input-field" min={0} />
+            <input type="number" value={form.sellingPrice} onChange={(e) => set('sellingPrice', e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0} />
           </div>
           <div>
             <label className="label">Cost Price (₹)</label>
-            <input type="number" value={form.costPrice} onChange={(e) => set('costPrice', e.target.value)} className="input-field" min={0} />
+            <input type="number" value={form.costPrice} onChange={(e) => set('costPrice', e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0} />
           </div>
           <div>
             <label className="label">{isEdit ? 'Current Qty (read-only)' : 'Opening Qty'}</label>
-            <input type="number" value={form.qty} onChange={(e) => set('qty', Number(e.target.value))} className="input-field" min={0} disabled={isEdit} />
+            <input type="number" value={form.qty} onChange={(e) => set('qty', Number(e.target.value))} onFocus={(e) => e.target.select()} className="input-field" min={0} disabled={isEdit} />
           </div>
           <div>
             <label className="label">Low-Stock Threshold</label>
-            <input type="number" value={form.lowStockThreshold} onChange={(e) => set('lowStockThreshold', Number(e.target.value))} className="input-field" min={1} />
+            <input type="number" value={form.lowStockThreshold} onChange={(e) => set('lowStockThreshold', Number(e.target.value))} onFocus={(e) => e.target.select()} className="input-field" min={1} />
           </div>
         </div>
 

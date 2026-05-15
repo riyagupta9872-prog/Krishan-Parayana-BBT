@@ -60,6 +60,7 @@ export default function ReceivePaymentModal({ isOpen, onClose, debtor }) {
             <input
               type="number" value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onFocus={(e) => e.target.select()}
               className="input-field text-lg font-semibold" placeholder="0"
               min={1}
             />

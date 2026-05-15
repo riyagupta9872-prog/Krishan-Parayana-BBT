@@ -51,11 +51,11 @@ export default function AddDebtorModal({ isOpen, onClose }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Opening Balance (₹)</label>
-              <input type="number" value={form.openingBalance} onChange={(e) => set('openingBalance', e.target.value)} className="input-field" min={0} placeholder="0" />
+              <input type="number" value={form.openingBalance} onChange={(e) => set('openingBalance', e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0} placeholder="0" />
             </div>
             <div>
               <label className="label">Credit Limit (₹) — 0 = no limit</label>
-              <input type="number" value={form.creditLimit} onChange={(e) => set('creditLimit', e.target.value)} className="input-field" min={0} placeholder="0" />
+              <input type="number" value={form.creditLimit} onChange={(e) => set('creditLimit', e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0} placeholder="0" />
             </div>
           </div>
         )}

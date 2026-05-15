@@ -124,6 +124,7 @@ export default function SellModal({ isOpen, onClose, item }) {
             <input
               type="number" value={qty}
               onChange={(e) => setQty(Math.max(1, Math.min(item.qty, Number(e.target.value))))}
+              onFocus={(e) => e.target.select()}
               className="input-field text-center w-20 text-lg font-bold"
               min={1} max={item.qty}
             />

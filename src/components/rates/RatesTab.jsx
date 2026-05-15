@@ -40,11 +40,11 @@ function EditPriceModal({ item, onClose }) {
         </div>
         <div>
           <label className="label">New Selling Price (₹) *</label>
-          <input type="number" value={sellingPrice} onChange={(e)=>setSellingPrice(e.target.value)} className="input-field" min={0.01} />
+          <input type="number" value={sellingPrice} onChange={(e)=>setSellingPrice(e.target.value)} onFocus={(e)=>e.target.select()} className="input-field" min={0.01} />
         </div>
         <div>
           <label className="label">Cost Price (₹)</label>
-          <input type="number" value={costPrice} onChange={(e)=>setCostPrice(e.target.value)} className="input-field" min={0} />
+          <input type="number" value={costPrice} onChange={(e)=>setCostPrice(e.target.value)} onFocus={(e)=>e.target.select()} className="input-field" min={0} />
           {margin!==null && <p className={`text-xs mt-1 font-medium ${margin<0?'text-danger':margin<20?'text-warning':'text-success'}`}>Margin: {margin}%</p>}
         </div>
         <div>

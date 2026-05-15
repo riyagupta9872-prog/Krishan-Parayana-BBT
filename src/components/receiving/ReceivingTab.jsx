@@ -56,12 +56,12 @@ function RecordReceivingModal({ isOpen, onClose, inventory, isSuperAdmin }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Qty Received *</label>
-            <input type="number" value={qty} onChange={(e)=>setQty(e.target.value)} className="input-field" min={1} />
+            <input type="number" value={qty} onChange={(e)=>setQty(e.target.value)} onFocus={(e)=>e.target.select()} className="input-field" min={1} />
           </div>
           {isSuperAdmin && (
             <div>
               <label className="label">Cost Per Unit (₹)</label>
-              <input type="number" value={costPerUnit} onChange={(e)=>setCostPerUnit(e.target.value)} className="input-field" min={0} />
+              <input type="number" value={costPerUnit} onChange={(e)=>setCostPerUnit(e.target.value)} onFocus={(e)=>e.target.select()} className="input-field" min={0} />
               {selectedItem && Number(costPerUnit) > selectedItem.sellingPrice && (
                 <p className="text-danger text-xs mt-1">⚠ Cost exceeds selling price</p>
               )}
