@@ -92,8 +92,7 @@ export const debtorService = {
     const entryRef = await addDoc(collection(db, COL, debtorId, 'ledger'), {
       ...entry, runningBalance,
       date: serverTimestamp(),
-      billStatus: entry.type === 'debit' ? 'open' : undefined,
-      paidAmount: entry.type === 'debit' ? 0 : undefined,
+      ...(entry.type === 'debit' ? { billStatus: 'open', paidAmount: 0 } : {}),
     })
     const newStatus = runningBalance <= 0 ? (runningBalance < 0 ? 'credit' : 'settled') : 'active'
     await updateDoc(doc(db, COL, debtorId), {
