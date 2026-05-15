@@ -43,8 +43,8 @@ export default function App() {
           <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-blue">
             <span className="text-white text-2xl">☸</span>
           </div>
-          <div className="w-8 h-8 border-3 border-primary-md border-t-primary rounded-full animate-spin mx-auto" />
-          <p className="text-ink-3 font-body text-sm mt-3">Loading SCIAMS…</p>
+          <div className="w-8 h-8 border-[3px] border-primary-md border-t-primary rounded-full animate-spin mx-auto" />
+          <p className="text-ink-3 font-body text-sm mt-3">Loading…</p>
         </div>
       </div>
     )
@@ -57,9 +57,13 @@ export default function App() {
       <OfflineBanner />
       <Header />
       <TabBar />
-      <main className="flex-1 pb-10">
+
+      {/* pb-20 on mobile = clears the fixed bottom nav (≈80px) */}
+      {/* pb-24 on mobile clears the fixed bottom nav; sm:pb-10 for desktop */}
+      <main className="flex-1 pb-24 sm:pb-10">
         <TabContent tab={activeTab} isSuperAdmin={isSuperAdmin} />
       </main>
+
       <Toast />
     </div>
   )
