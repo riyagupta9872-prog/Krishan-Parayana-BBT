@@ -85,8 +85,8 @@ export default function AddItemModal({ isOpen, onClose, editItem = null }) {
             <input type="number" value={form.costPrice} onChange={(e) => set('costPrice', e.target.value)} onFocus={(e) => e.target.select()} className="input-field" min={0} />
           </div>
           <div>
-            <label className="label">{isEdit ? 'Current Qty (read-only)' : 'Opening Qty'}</label>
-            <input type="number" value={form.qty} onChange={(e) => set('qty', Number(e.target.value))} onFocus={(e) => e.target.select()} className="input-field" min={0} disabled={isEdit} />
+            <label className="label">Qty</label>
+            <input type="number" value={form.qty} onChange={(e) => set('qty', Number(e.target.value))} onFocus={(e) => e.target.select()} className="input-field" min={0} />
           </div>
           <div>
             <label className="label">Low-Stock Threshold</label>
