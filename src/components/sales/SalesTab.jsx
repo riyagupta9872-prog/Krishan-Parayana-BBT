@@ -177,6 +177,26 @@ export default function SalesTab() {
   const [loading,  setLoading]  = useState(false)
   const [histFilter, setHistFilter] = useState('all')
 
+  // Date range
+  const todayStr = () => new Date().toISOString().slice(0, 10)
+  const [period,   setPeriod]   = useState('today')
+  const [dateFrom, setDateFrom] = useState(todayStr)
+  const [dateTo,   setDateTo]   = useState(todayStr)
+
+  const applyPreset = (p) => {
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10)
+    if (p === 'today') {
+      setDateFrom(today); setDateTo(today)
+    } else if (p === 'week') {
+      const d = new Date(now); d.setDate(d.getDate() - d.getDay()) // Sunday
+      setDateFrom(d.toISOString().slice(0, 10)); setDateTo(today)
+    } else if (p === 'month') {
+      setDateFrom(`${today.slice(0,7)}-01`); setDateTo(today)
+    }
+    setPeriod(p)
+  }
+
   const { data: items,    loading: l1 }       = useFirestoreSubscription((cb,e) => inventoryService.subscribe(cb,e))
   const { data: txns,     loading: l2, error } = useFirestoreSubscription((cb,e) => transactionService.subscribe(cb,e))
 
@@ -246,14 +266,25 @@ export default function SalesTab() {
 
   if (l1 || l2) return <PageLoader />
 
-  // History filters
-  const filteredTxns = txns.filter((t) => histFilter === 'all' || t.saleType === histFilter)
+  // Date-range filter helpers
+  const fromDate = new Date(dateFrom + 'T00:00:00')
+  const toDate   = new Date(dateTo   + 'T23:59:59')
+
+  const inRange = (t) => {
+    const d = t.date?.toDate?.()
+    return d && d >= fromDate && d <= toDate
+  }
+
+  const periodTxns  = txns.filter((t) => inRange(t) && t.status !== 'voided')
+  const filteredTxns = txns.filter((t) => inRange(t) && (histFilter === 'all' || t.saleType === histFilter))
+
+  const periodTotal = periodTxns.reduce((s, t) => s + (t.totalAmount || 0), 0)
 
   const todayTotal = txns.filter((t) => {
-    const d = t.date?.toDate?.(); if(!d) return false
+    const d = t.date?.toDate?.(); if (!d) return false
     const today = new Date(); today.setHours(0,0,0,0)
-    return d>=today && t.status!=='voided'
-  }).reduce((s,t)=>s+(t.totalAmount||0),0)
+    return d >= today && t.status !== 'voided'
+  }).reduce((s, t) => s + (t.totalAmount || 0), 0)
 
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-4">
@@ -365,35 +396,63 @@ export default function SalesTab() {
       {/* ── SALES HISTORY ─────────────────────────────────────────── */}
       {mode === 'history' && (
         <div className="space-y-3">
-          {/* Filter bar */}
+
+          {/* ── Period picker ── */}
+          <div className="card space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex gap-1.5 flex-wrap">
+                {[{id:'today',l:'Today'},{id:'week',l:'This Week'},{id:'month',l:'This Month'},{id:'custom',l:'Custom'}].map(({id,l})=>(
+                  <button key={id} onClick={() => applyPreset(id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
+                      ${period===id?'bg-primary text-white border-primary':'bg-white border-border-lt text-ink-3 hover:border-primary'}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <p className="text-ink-3 text-xs font-medium">{fmt.currency(periodTotal)} · {periodTxns.length} sales</p>
+            </div>
+
+            {/* Custom date inputs */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <input type="date" value={dateFrom} max={dateTo}
+                onChange={(e) => { setDateFrom(e.target.value); setPeriod('custom') }}
+                className="input-field text-sm py-1.5 w-auto" />
+              <span className="text-ink-3 text-xs font-medium">to</span>
+              <input type="date" value={dateTo} min={dateFrom} max={todayStr()}
+                onChange={(e) => { setDateTo(e.target.value); setPeriod('custom') }}
+                className="input-field text-sm py-1.5 w-auto" />
+            </div>
+
+            {/* Period summary chips */}
+            <div className="grid grid-cols-3 gap-2">
+              {['cash','credit','gift'].map((type) => {
+                const t = periodTxns.filter(t => t.saleType === type)
+                const total = t.reduce((s, t) => s + (t.totalAmount || 0), 0)
+                const colors = { cash:'bg-success-lt border-green-200 text-success', credit:'bg-primary-lt border-border-blue text-primary', gift:'bg-warning-lt border-amber-200 text-warning' }
+                const icons  = { cash:'💵', credit:'📋', gift:'🎁' }
+                return (
+                  <div key={type} className={`rounded-xl border p-2 text-center ${colors[type]}`}>
+                    <p className="text-xs font-medium opacity-70">{icons[type]} {type}</p>
+                    <p className="font-bold text-sm">{fmt.currency(total)}</p>
+                    <p className="text-xs opacity-60">{t.length} sales</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Type filter */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex gap-2">
-              {['all','cash','credit','gift'].map((f)=>(
-                <button key={f} onClick={()=>setHistFilter(f)}
+              {['all','cash','credit','gift'].map((f) => (
+                <button key={f} onClick={() => setHistFilter(f)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize
                     ${histFilter===f?'bg-primary text-white border-primary':'bg-white border-border-lt text-ink-3'}`}>
-                  {f==='all'?'All':f}
+                  {f === 'all' ? 'All' : f}
                 </button>
               ))}
             </div>
             <p className="text-ink-3 text-xs ml-auto">{filteredTxns.length} transactions</p>
-          </div>
-
-          {/* Today's summary chips */}
-          <div className="grid grid-cols-3 gap-3">
-            {['cash','credit','gift'].map((type)=>{
-              const t = txns.filter(t=>t.saleType===type && t.status!=='voided')
-              const total = t.reduce((s,t)=>s+(t.totalAmount||0),0)
-              const colors = {cash:'bg-success-lt border-green-200 text-success',credit:'bg-primary-lt border-border-blue text-primary',gift:'bg-warning-lt border-amber-200 text-warning'}
-              const icons = {cash:'💵',credit:'📋',gift:'🎁'}
-              return (
-                <div key={type} className={`card text-center border capitalize ${colors[type]}`}>
-                  <p className="text-xs font-medium opacity-70">{icons[type]} {type}</p>
-                  <p className="font-bold text-lg">{fmt.currency(total)}</p>
-                  <p className="text-xs opacity-60">{t.length} sales</p>
-                </div>
-              )
-            })}
           </div>
 
           {/* Transaction list */}
