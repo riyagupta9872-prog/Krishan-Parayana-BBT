@@ -69,14 +69,17 @@ async function main() {
   console.log('Signed in as', email)
 
   const existing = await getDocs(collection(db, 'inventory'))
-  if (existing.size > 0) {
-    console.log(`⚠  Inventory already has ${existing.size} item(s). Skipping seed to avoid duplicates.`)
-    console.log('   Delete existing items first if you want to re-seed.')
+  const existingNames = new Set(existing.docs.map(d => d.data().name?.toLowerCase()))
+  console.log(`Existing inventory: ${existing.size} item(s)`)
+
+  const toAdd = PRODUCTS.filter(p => !existingNames.has(p.name.toLowerCase()))
+  if (toAdd.length === 0) {
+    console.log('✓ All products already exist. Nothing to add.')
     process.exit(0)
   }
 
-  console.log(`\nAdding ${PRODUCTS.length} products…\n`)
-  for (const p of PRODUCTS) {
+  console.log(`\nAdding ${toAdd.length} missing products…\n`)
+  for (const p of toAdd) {
     await addDoc(collection(db, 'inventory'), {
       ...p,
       sellingPrice:       0,
@@ -93,7 +96,7 @@ async function main() {
     console.log(`  ✓  ${p.productGroup}${variant}`)
   }
 
-  console.log(`\nDone! ${PRODUCTS.length} products added.`)
+  console.log(`\nDone! ${toAdd.length} products added (${existing.size} existing kept).`)
   console.log('Open the app → Inventory → Edit each item to set prices and opening stock.')
   process.exit(0)
 }
