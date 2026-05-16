@@ -50,16 +50,26 @@ function DebtorCard({ debtor, onView }) {
           </div>
 
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-ink-3 text-xs">📞</span>
+            <span className="text-ink-4 text-xs">📞</span>
             <span className="text-ink-2 text-xs font-medium">{fmt.phone(debtor.phone)}</span>
           </div>
 
-          {debtor.reference && (
-            <p className="text-ink-4 text-xs mt-0.5 truncate">📌 {debtor.reference}</p>
-          )}
-          {debtor.teamName && (
-            <p className="text-ink-4 text-xs mt-0.5 truncate">👥 {debtor.teamName}</p>
-          )}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-ink-4 text-xs">👥</span>
+            <span className="text-xs truncate">{debtor.teamName
+              ? <span className="text-ink-2 font-medium">{debtor.teamName}</span>
+              : <span className="text-ink-4">—</span>}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-ink-4 text-xs">📌</span>
+            <span className="text-xs truncate">{debtor.reference
+              ? <span className="text-ink-2">{debtor.reference}</span>
+              : <span className="text-ink-4">—</span>}
+            </span>
+          </div>
+
           {daysSince !== null && (
             <p className="text-ink-4 text-xs mt-0.5">Last txn {daysSince}d ago</p>
           )}

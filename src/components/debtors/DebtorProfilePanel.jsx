@@ -63,7 +63,16 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
     const u2 = debtorService.subscribeCallingLog(debtor.id, setCallingLogs)
     setDirLoading(true)
     lookupDevoteeByPhone(debtor.phone)
-      .then(setDirProfile)
+      .then((profile) => {
+        setDirProfile(profile)
+        // Cache teamName + reference back to Firestore if currently missing
+        if (profile) {
+          const updates = {}
+          if (!debtor.teamName  && profile.teamName)    updates.teamName  = profile.teamName
+          if (!debtor.reference && profile.referenceBy) updates.reference = profile.referenceBy
+          if (Object.keys(updates).length > 0) debtorService.update(debtor.id, updates)
+        }
+      })
       .catch(() => setDirProfile(null))
       .finally(() => setDirLoading(false))
     return () => { u1(); u2() }
