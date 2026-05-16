@@ -278,7 +278,9 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
 
             return (
               <div key={item.id}
+                onClick={() => isSuperAdmin && setEditItem(item)}
                 className={`px-4 py-3 border-b border-border-lt last:border-0 transition-colors hover:bg-slate-50
+                  ${isSuperAdmin ? 'cursor-pointer' : ''}
                   ${isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/40' : ''}`}>
 
                 {/* Mobile layout */}
@@ -299,10 +301,9 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                     </div>
                   </div>
                   {isSuperAdmin && (
-                    <div className="flex gap-1 shrink-0">
+                    <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                       <button onClick={() => onAdjust(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-warning">±</button>
                       <button onClick={() => setPriceItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7 text-primary" title="Edit price">₹✏</button>
-                      <button onClick={() => setEditItem(item)} className="btn-ghost text-xs px-2 py-1 min-h-0 h-7" title="Edit item">✏</button>
                     </div>
                   )}
                 </div>
@@ -327,7 +328,7 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                     <div className="flex items-center justify-end gap-1">
                       <p className="text-ink font-semibold text-sm">{fmt.currency(item.sellingPrice)}</p>
                       {isSuperAdmin && (
-                        <button onClick={() => setPriceItem(item)} title="Edit price & history"
+                        <button onClick={(e) => { e.stopPropagation(); setPriceItem(item) }} title="Edit price & history"
                           className="text-ink-4 hover:text-primary transition-colors text-xs leading-none opacity-60 hover:opacity-100">✏</button>
                       )}
                     </div>
@@ -335,7 +336,7 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                   <div className="text-right">
                     <p className="text-primary font-semibold text-sm">{fmt.currency(value)}</p>
                   </div>
-                  <div className="flex gap-1 justify-end flex-wrap">
+                  <div className="flex gap-1 justify-end flex-wrap" onClick={e => e.stopPropagation()}>
                     {isSuperAdmin && (
                       <>
                         <button onClick={() => onAdjust(item)} title="Adjust stock"
@@ -345,10 +346,6 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                         <button onClick={() => setPriceItem(item)} title="Edit price & history"
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all h-7">
                           ₹ Price
-                        </button>
-                        <button onClick={() => setEditItem(item)} title="Edit item details"
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all h-7">
-                          ✏ Edit
                         </button>
                         <button onClick={() => handleToggleActive(item)} title={item.status === 'inactive' ? 'Mark active' : 'Mark inactive'}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-all h-7
