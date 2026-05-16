@@ -47,34 +47,38 @@ export async function lookupDevoteeByPhone(phone) {
   return null
 }
 
+// In-memory cache so we only fetch all devotees once per session
+let _allDevoteesCache = null
+let _cacheLoadedAt   = 0
+const CACHE_TTL_MS   = 5 * 60 * 1000 // 5 minutes
+
+async function getAllDevotees() {
+  const now = Date.now()
+  if (_allDevoteesCache && (now - _cacheLoadedAt) < CACHE_TTL_MS) {
+    return _allDevoteesCache
+  }
+  const db = getDirectoryDb()
+  try {
+    const snap = await getDocs(query(collection(db, 'devotees'), limit(1000)))
+    _allDevoteesCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    _cacheLoadedAt   = now
+    return _allDevoteesCache
+  } catch {
+    return []
+  }
+}
+
 /**
- * Search devotees by name prefix. Returns up to 10 results.
- * Tries multiple case variants since Firestore prefix search is case-sensitive.
+ * Search devotees by name — case-insensitive, matches anywhere in name.
+ * Fetches all devotees once then filters client-side (reliable across all casing).
  */
 export async function lookupDevoteesByName(name) {
   if (!name || name.trim().length < 2) return []
-  const db = getDirectoryDb()
-  const results = new Map()
-
-  const raw = name.trim()
-  // Build case variants to maximise matches
-  const titleCase = raw.replace(/\b\w/g, (c) => c.toUpperCase())
-  const ucFirst   = raw.charAt(0).toUpperCase() + raw.slice(1)
-  const lower     = raw.toLowerCase()
-
-  for (const v of [...new Set([titleCase, ucFirst, lower, raw])]) {
-    try {
-      const end  = v.slice(0, -1) + String.fromCharCode(v.charCodeAt(v.length - 1) + 1)
-      const snap = await getDocs(
-        query(collection(db, 'devotees'),
-          where('name', '>=', v),
-          where('name', '<',  end),
-          limit(10))
-      )
-      snap.docs.forEach((d) => results.set(d.id, { id: d.id, ...d.data() }))
-    } catch { /* field unavailable */ }
-  }
-  return [...results.values()].slice(0, 10)
+  const all = await getAllDevotees()
+  const q   = name.trim().toLowerCase()
+  return all
+    .filter((d) => (d.name || '').toLowerCase().includes(q))
+    .slice(0, 15)
 }
 
 /**
