@@ -12,7 +12,7 @@ export function exportAgingToPDF(report, totals, totalOutstanding) {
   doc.setTextColor(255, 107, 0)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('Spiritual BBT Corner', 105, 15, { align: 'center' })
+  doc.text('Krishan Parayana BBT', 105, 15, { align: 'center' })
   doc.setFontSize(12)
   doc.setTextColor(212, 160, 23)
   doc.text('Aging Analysis Report', 105, 25, { align: 'center' })

@@ -13,9 +13,9 @@ export default defineConfig({
       base: BASE,
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Spiritual BBT Corner — SCIAMS',
-        short_name: 'SCIAMS',
-        description: 'Spiritual Corner Inventory & Accounts Management System',
+        name: 'Krishan Parayana BBT',
+        short_name: 'KP BBT',
+        description: 'Krishan Parayana BBT — Inventory & Accounts Management',
         theme_color: '#1D4ED8',
         background_color: '#F0F7FF',
         display: 'standalone',

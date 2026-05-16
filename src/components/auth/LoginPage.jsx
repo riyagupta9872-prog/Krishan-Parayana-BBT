@@ -87,7 +87,7 @@ export default function LoginPage() {
             <span className="text-white text-3xl">☸</span>
           </div>
           <h1 className="font-display text-primary text-xl font-bold tracking-wide mb-1">
-            Spiritual BBT Corner
+            Krishan Parayana BBT
           </h1>
           <p className="font-body text-primary/70 text-sm font-medium">
             Inventory & Accounts Management

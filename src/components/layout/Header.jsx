@@ -21,7 +21,7 @@ export default function Header() {
             </div>
             <div>
               <h1 className="font-display text-primary text-sm sm:text-base font-bold leading-tight tracking-wide">
-                Spiritual BBT Corner
+                Krishan Parayana BBT
               </h1>
               <p className="text-ink-3 text-xs font-body hidden sm:block">
                 Inventory & Accounts Management
