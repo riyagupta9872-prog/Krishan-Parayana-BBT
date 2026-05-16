@@ -172,15 +172,18 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
   }
 
   const catList = CAT_GROUPS[catGrp]
+  const resolvedGroup = (i) => {
+    if (i.group === 'stationery') return 'accessories' // legacy migration
+    return i.group || ''
+  }
   const matchesGroup = (i) => {
     if (!catList) return true
-    // Check new group field first (set by AddItemModal)
-    if (i.group) {
-      if (catGrp === 'Apparel')     return i.group === 'apparel'
-      if (catGrp === 'Accessories') return i.group === 'accessories' || i.group === 'stationery'
-      if (catGrp === 'Books')       return i.group === 'books'
+    const g = resolvedGroup(i)
+    if (g) {
+      if (catGrp === 'Apparel')     return g === 'apparel'
+      if (catGrp === 'Accessories') return g === 'accessories'
+      if (catGrp === 'Books')       return g === 'books'
     }
-    // Fallback: old category name matching
     return catList.includes(i.category)
   }
   const filtered = items
@@ -316,7 +319,7 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
                     {item.author && <p className="text-ink-4 text-xs italic">{item.author}</p>}
                   </div>
                   <div>
-                    <span className="text-ink-3 text-xs">{item.category}</span>
+                    <span className="text-ink-3 text-xs capitalize">{resolvedGroup(item) || item.category || '—'}</span>
                     {item.status !== 'active' && <span className={`badge text-xs ml-1 capitalize ${item.status === 'inactive' ? 'badge-gray' : 'badge-amber'}`}>{item.status}</span>}
                   </div>
                   <div className="text-center">
@@ -660,9 +663,11 @@ function ValuationTab({ items, isSuperAdmin }) {
   const totalCost = active.reduce((s, i) => s + i.qty * (i.costPrice   || 0), 0)
 
   const byCategory = {}
+  const resolveGroup = (i) => i.group === 'stationery' ? 'accessories' : (i.group || '')
   active.forEach((i) => {
-    const grp = (i.group === 'apparel' || CATEGORIES.APPAREL.includes(i.category)) ? 'Apparel'
-      : (i.group === 'books' || CATEGORIES.BOOKS.includes(i.category)) ? 'Books' : 'Accessories'
+    const g = resolveGroup(i)
+    const grp = (g === 'apparel' || CATEGORIES.APPAREL.includes(i.category)) ? 'Apparel'
+      : (g === 'books' || CATEGORIES.BOOKS.includes(i.category)) ? 'Books' : 'Accessories'
     if (!byCategory[grp]) byCategory[grp] = { mrp: 0, cost: 0, units: 0, items: 0 }
     byCategory[grp].mrp   += i.qty * (i.sellingPrice || 0)
     byCategory[grp].cost  += i.qty * (i.costPrice    || 0)
