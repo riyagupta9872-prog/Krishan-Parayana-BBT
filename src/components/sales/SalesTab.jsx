@@ -159,10 +159,6 @@ function ProductPicker({ items, basket, onAdd }) {
         </div>
       )}
 
-      <AddDebtorModal isOpen={showAddDebtor} onClose={() => {
-        setShowAddDebtor(false)
-        if (saleType === 'credit') debtorService.getAll().then(list => setDebtors(list.filter(d => d.status !== 'blocked' || isSuperAdmin)))
-      }} />
     </div>
   )
 }
@@ -515,6 +511,11 @@ export default function SalesTab() {
           )}
         </div>
       )}
+
+      <AddDebtorModal isOpen={showAddDebtor} onClose={() => {
+        setShowAddDebtor(false)
+        if (saleType === 'credit') debtorService.getAll().then(list => setDebtors(list.filter(d => d.status !== 'blocked' || isSuperAdmin)))
+      }} />
     </div>
   )
 }
