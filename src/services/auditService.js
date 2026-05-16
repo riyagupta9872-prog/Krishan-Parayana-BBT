@@ -21,7 +21,7 @@ export const auditService = {
     const q = query(collection(db, COL), orderBy('timestamp', 'desc'), limit(200))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('adminAudit subscribe:', err); callback([]); onError?.(err) }
     )
   },
@@ -30,7 +30,7 @@ export const auditService = {
     const q = query(collection(db, PRICE_COL), orderBy('timestamp', 'desc'), limit(200))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('priceAudit subscribe:', err); callback([]); onError?.(err) }
     )
   },
@@ -46,7 +46,7 @@ export const auditService = {
     const q = query(collection(db, PRICE_COL), where('itemId', '==', itemId), orderBy('timestamp', 'desc'), limit(50))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { callback([]); onError?.(err) }
     )
   },

@@ -19,7 +19,7 @@ export const transactionService = {
     const q = query(collection(db, COL), orderBy('date', 'desc'), limit(limitCount))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('transactions subscribe:', err); callback([]); onError?.(err) }
     )
   },

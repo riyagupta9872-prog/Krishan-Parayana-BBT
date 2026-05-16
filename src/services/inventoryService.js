@@ -1,34 +1,42 @@
 import {
-  collection, doc, addDoc, updateDoc, setDoc, getDocs, deleteDoc,
-  onSnapshot, serverTimestamp, query, where, orderBy, getDoc, increment
+  collection, doc, addDoc, setDoc, getDocs, deleteDoc,
+  onSnapshot, serverTimestamp, query, orderBy, getDoc, increment
 } from 'firebase/firestore'
 import { db } from './firebase'
 
 const COL = 'inventory'
+
+// Strip client-side `id` so it never gets written into Firestore document data.
+// Without this, editing an item spreads `editItem.id` into the saved data, which
+// then overwrites the real Firestore doc ID in the subscribe mapper and causes
+// deletes/updates to target the wrong document.
+const strip = ({ id: _id, ...rest }) => rest
+
+const toItem = (d) => ({ ...d.data(), id: d.id }) // id: d.id LAST — always wins
 
 export const inventoryService = {
   subscribe(callback, onError) {
     const q = query(collection(db, COL), orderBy('name'))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map(toItem)),
       (err) => { console.error('inventory subscribe:', err); callback([]); onError?.(err) }
     )
   },
 
   async getAll() {
     const snap = await getDocs(query(collection(db, COL), orderBy('name')))
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    return snap.docs.map(toItem)
   },
 
   async getById(id) {
     const snap = await getDoc(doc(db, COL, id))
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null
+    return snap.exists() ? toItem(snap) : null
   },
 
   async add(data, adminUid) {
     return addDoc(collection(db, COL), {
-      ...data,
+      ...strip(data),
       qty: data.qty || 0,
       status: data.status || 'active',
       isGift: data.isGift || false,
@@ -39,7 +47,7 @@ export const inventoryService = {
   },
 
   async update(id, data) {
-    return setDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() }, { merge: true })
+    return setDoc(doc(db, COL, id), { ...strip(data), updatedAt: serverTimestamp() }, { merge: true })
   },
 
   async delete(id) {
@@ -64,7 +72,7 @@ export const inventoryService = {
     const item = await this.getById(id)
     if (!item) throw new Error('Item not found')
     if (item.qty < qty) throw new Error('Insufficient stock')
-    return updateDoc(doc(db, COL, id), { qty: item.qty - qty, updatedAt: serverTimestamp() })
+    return setDoc(doc(db, COL, id), { qty: item.qty - qty, updatedAt: serverTimestamp() }, { merge: true })
   },
 
   async incrementStock(id, qty) {

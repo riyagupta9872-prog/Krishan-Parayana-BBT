@@ -11,14 +11,14 @@ export const debtorService = {
     const q = query(collection(db, COL), orderBy('name'))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('debtors subscribe:', err); callback([]); onError?.(err) }
     )
   },
 
   async getAll() {
     const snap = await getDocs(query(collection(db, COL), orderBy('name')))
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    return snap.docs.map((d) => ({ ...d.data(), id: d.id }))
   },
 
   async getById(id) {
@@ -74,7 +74,7 @@ export const debtorService = {
     const q = query(collection(db, COL, debtorId, 'ledger'), orderBy('date'))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('ledger subscribe:', err); callback([]); onError?.(err) }
     )
   },
@@ -82,7 +82,7 @@ export const debtorService = {
   async getLedger(debtorId) {
     try {
       const snap = await getDocs(query(collection(db, COL, debtorId, 'ledger'), orderBy('date')))
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      return snap.docs.map((d) => ({ ...d.data(), id: d.id }))
     } catch { return [] }
   },
 
@@ -120,7 +120,7 @@ export const debtorService = {
     const q = query(collection(db, COL, debtorId, 'callingLog'), orderBy('date', 'desc'))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('callingLog subscribe:', err); callback([]); onError?.(err) }
     )
   },

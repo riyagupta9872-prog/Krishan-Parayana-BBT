@@ -12,7 +12,7 @@ export const receivingService = {
     const q = query(collection(db, COL), orderBy('date', 'desc'), limit(100))
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
       (err) => { console.error('receiving subscribe:', err); callback([]); onError?.(err) }
     )
   },
