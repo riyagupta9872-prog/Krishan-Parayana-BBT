@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, deleteDoc,
+  collection, doc, addDoc, updateDoc, setDoc, getDocs, deleteDoc,
   onSnapshot, serverTimestamp, query, where, orderBy, getDoc, increment
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -39,7 +39,7 @@ export const inventoryService = {
   },
 
   async update(id, data) {
-    return updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+    return setDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() }, { merge: true })
   },
 
   async delete(id) {
@@ -47,13 +47,13 @@ export const inventoryService = {
   },
 
   async setStatus(id, status) {
-    return updateDoc(doc(db, COL, id), { status, updatedAt: serverTimestamp() })
+    return setDoc(doc(db, COL, id), { status, updatedAt: serverTimestamp() }, { merge: true })
   },
 
   async adjustStock(id, delta, reason, adminUid, currentQty) {
     const newQty = currentQty + delta
     if (newQty < 0) throw new Error('Stock cannot go below zero')
-    await updateDoc(doc(db, COL, id), { qty: newQty, updatedAt: serverTimestamp() })
+    await setDoc(doc(db, COL, id), { qty: newQty, updatedAt: serverTimestamp() }, { merge: true })
     await addDoc(collection(db, 'adjustments'), {
       itemId: id, delta, reason, oldQty: currentQty, newQty,
       date: serverTimestamp(), adminUid,
@@ -68,7 +68,7 @@ export const inventoryService = {
   },
 
   async incrementStock(id, qty) {
-    return updateDoc(doc(db, COL, id), { qty: increment(qty), updatedAt: serverTimestamp() })
+    return setDoc(doc(db, COL, id), { qty: increment(qty), updatedAt: serverTimestamp() }, { merge: true })
   },
 }
 

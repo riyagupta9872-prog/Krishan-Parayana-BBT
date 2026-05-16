@@ -116,33 +116,36 @@ export default function AddItemModal({ isOpen, onClose, editItem = null }) {
         <div>
           <label className="label">Product *</label>
 
-          {/* Quick-select chips for Apparel & Accessories */}
-          {suggestions.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {suggestions.map((s) => (
-                <button key={s} type="button" onClick={() => set('productGroup', s)}
-                  className={`px-3 py-1 rounded-pill text-xs font-semibold border transition-all
-                    ${form.productGroup === s
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white border-border-lt text-ink-3 hover:border-primary hover:text-primary'}`}>
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-
+          {/* Free text input — always primary */}
           <input
             value={form.productGroup}
             onChange={(e) => set('productGroup', e.target.value)}
             className="input-field"
             placeholder={
               form.group === 'books'
-                ? 'e.g. Bhagavad Gita, Nectar of Devotion'
-                : suggestions.length > 0
-                  ? 'Select above or type a custom product name'
-                  : 'Enter product name'
+                ? 'e.g. Bhagavad Gita, Nectar of Devotion…'
+                : 'Type any product name…'
             }
+            autoFocus
           />
+
+          {/* Quick-select chips — optional shortcuts only */}
+          {suggestions.length > 0 && (
+            <div className="mt-2">
+              <p className="text-ink-4 text-xs mb-1.5">Quick fill:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.map((s) => (
+                  <button key={s} type="button" onClick={() => set('productGroup', s)}
+                    className={`px-3 py-1 rounded-pill text-xs font-semibold border transition-all
+                      ${form.productGroup === s
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-white border-border-lt text-ink-3 hover:border-primary hover:text-primary'}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── 3. Sub-Variant ── */}
