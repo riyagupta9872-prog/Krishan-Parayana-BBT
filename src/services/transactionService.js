@@ -1,6 +1,6 @@
 import {
-  collection, doc, addDoc, updateDoc, setDoc, getDocs, getDoc,
-  onSnapshot, serverTimestamp, query, orderBy, writeBatch, increment, limit
+  collection, doc, addDoc, updateDoc, setDoc, getDocs, getDoc, deleteDoc,
+  onSnapshot, serverTimestamp, query, orderBy, where, writeBatch, increment, limit, Timestamp
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { debtorService } from './debtorService'
@@ -59,6 +59,28 @@ export const transactionService = {
     }
 
     return txnRef
+  },
+
+  async deleteTransaction(txnId, txn) {
+    // Restore stock only if transaction was not already voided (void already restores)
+    if (txn.status !== 'voided' && (txn.items || []).length > 0) {
+      const batch = writeBatch(db)
+      for (const item of txn.items) {
+        batch.set(doc(db, 'inventory', item.skuId), {
+          qty: increment(item.qty), updatedAt: serverTimestamp(),
+        }, { merge: true })
+      }
+      await batch.commit()
+    }
+    return deleteDoc(doc(db, COL, txnId))
+  },
+
+  async getForFY(fyStartYear) {
+    const from = Timestamp.fromDate(new Date(fyStartYear, 3, 1, 0, 0, 0))   // Apr 1
+    const to   = Timestamp.fromDate(new Date(fyStartYear + 1, 2, 31, 23, 59, 59)) // Mar 31
+    const q = query(collection(db, COL), where('date', '>=', from), where('date', '<=', to), orderBy('date', 'desc'))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ ...d.data(), id: d.id }))
   },
 
   async voidTransaction(txnId, reason, uid, displayName) {

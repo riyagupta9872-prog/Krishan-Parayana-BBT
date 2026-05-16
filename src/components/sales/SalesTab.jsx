@@ -287,6 +287,8 @@ export default function SalesTab() {
   const [histFilter,       setHistFilter]       = useState('all')
   const [showAddDebtor,    setShowAddDebtor]    = useState(false)
   const [addDebtorPrefill, setAddDebtorPrefill] = useState(null)
+  const [deleteTxn,        setDeleteTxn]        = useState(null)
+  const [deleting,         setDeleting]         = useState(false)
 
   // Date range
   const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -603,13 +605,18 @@ export default function SalesTab() {
                       <p className={`font-bold text-sm ${isVoided?'text-ink-3 line-through':colors[txn.saleType]}`}>
                         {fmt.currency(txn.totalAmount)}
                       </p>
-                      {isSuperAdmin && !isVoided && (
-                        <button onClick={async()=>{
-                          const reason = window.prompt('Void reason:')
-                          if(!reason) return
-                          try{ await transactionService.voidTransaction(txn.id, reason, user.uid, user.displayName); showToast('Transaction voided','success') }
-                          catch(e){ showToast(e.message,'error') }
-                        }} className="text-danger text-xs hover:underline mt-0.5">void</button>
+                      {isSuperAdmin && (
+                        <div className="flex gap-2 justify-end mt-0.5">
+                          {!isVoided && (
+                            <button onClick={async()=>{
+                              const reason = window.prompt('Void reason:')
+                              if(!reason) return
+                              try{ await transactionService.voidTransaction(txn.id, reason, user.uid, user.displayName); showToast('Transaction voided','success') }
+                              catch(e){ showToast(e.message,'error') }
+                            }} className="text-warning text-xs hover:underline">void</button>
+                          )}
+                          <button onClick={() => setDeleteTxn(txn)} className="text-danger text-xs hover:underline font-semibold">delete</button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -629,6 +636,37 @@ export default function SalesTab() {
           if (saleType === 'credit') debtorService.getAll().then(list => setDebtors(list.filter(d => d.status !== 'blocked' || isSuperAdmin)))
         }}
       />
+
+      {/* Delete transaction confirmation */}
+      {deleteTxn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm">
+          <div className="bg-white rounded-modal shadow-modal border border-border-lt p-6 w-full max-w-sm animate-slide-up">
+            <h3 className="font-semibold text-ink text-base mb-1">Delete Transaction?</h3>
+            <p className="text-ink-3 text-sm mb-1">
+              {deleteTxn.items?.map((i) => `${i.name} ×${i.qty}`).join(', ')}
+            </p>
+            <p className="font-bold text-danger mb-3">{fmt.currency(deleteTxn.totalAmount)}</p>
+            {deleteTxn.status !== 'voided' && (
+              <div className="bg-warning-lt border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-ink-2">
+                ⚠ Stock will be <strong>restored</strong> for all items in this transaction.
+              </div>
+            )}
+            <p className="text-ink-4 text-xs mb-4">This permanently removes the record and cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTxn(null)} disabled={deleting} className="btn-secondary flex-1">Cancel</button>
+              <button disabled={deleting} onClick={async () => {
+                setDeleting(true)
+                try {
+                  await transactionService.deleteTransaction(deleteTxn.id, deleteTxn)
+                  showToast('Transaction deleted', 'success')
+                  setDeleteTxn(null)
+                } catch (e) { showToast(e.message, 'error') }
+                finally { setDeleting(false) }
+              }} className="btn-danger flex-1">{deleting ? 'Deleting…' : 'Delete'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

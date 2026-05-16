@@ -130,10 +130,11 @@ const SUB_TABS = [
 ]
 
 const CAT_GROUPS = {
-  All:        null,
-  Apparel:    CATEGORIES.APPAREL,
+  All:         null,
+  Apparel:     CATEGORIES.APPAREL,
   Accessories: CATEGORIES.ACCESSORIES,
-  Books:      CATEGORIES.BOOKS,
+  Books:       CATEGORIES.BOOKS,
+  Other:       [],
 }
 
 /* ─── Catalog sub-tab ────────────────────────────────────────────── */
@@ -177,14 +178,13 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
     return i.group || ''
   }
   const matchesGroup = (i) => {
-    if (!catList) return true
+    if (!catList && catGrp !== 'Other') return true
     const g = resolvedGroup(i)
-    if (g) {
-      if (catGrp === 'Apparel')     return g === 'apparel'
-      if (catGrp === 'Accessories') return g === 'accessories'
-      if (catGrp === 'Books')       return g === 'books'
-    }
-    return catList.includes(i.category)
+    if (catGrp === 'Apparel')     return g === 'apparel' || catList?.includes(i.category)
+    if (catGrp === 'Accessories') return g === 'accessories' || catList?.includes(i.category)
+    if (catGrp === 'Books')       return g === 'books' || catList?.includes(i.category)
+    if (catGrp === 'Other')       return g === 'other' || (!g && !catList?.includes(i.category) && !CATEGORIES.BOOKS.includes(i.category))
+    return true
   }
   const filtered = items
     .filter((i) => i.status !== 'inactive' || isSuperAdmin)

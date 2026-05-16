@@ -8,6 +8,7 @@ const GROUPS = [
   { id: 'apparel',     label: '👘 Apparel'     },
   { id: 'accessories', label: '📿 Accessories' },
   { id: 'books',       label: '📚 Books'        },
+  { id: 'other',       label: '📦 Other'        },
 ]
 
 // Quick-select product chips per category
@@ -15,6 +16,7 @@ const SUGGESTIONS = {
   apparel:     ['Kurta', 'Gopi Dress', 'Dhoti', 'Dupatta'],
   accessories: ['Kanthi Mala', 'Chanting Mala', 'Bead Bag', 'Counter', 'Gopi Chandan', 'HK Card', 'Tilak Stand'],
   books:       [],
+  other:       [],
 }
 
 const EMPTY = {
@@ -99,7 +101,7 @@ export default function AddItemModal({ isOpen, onClose, editItem = null }) {
         {/* ── 1. Category ── */}
         <div>
           <label className="label">Category *</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {GROUPS.map((g) => (
               <button key={g.id} type="button" onClick={() => setGroup(g.id)}
                 className={`py-2.5 rounded-lg text-xs font-semibold border transition-all
