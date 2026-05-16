@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from '../common/Modal'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
@@ -23,13 +23,14 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
   const { user, isSuperAdmin } = useAuth()
   const { showToast } = useApp()
 
-  const [mode,         setMode]         = useState('manual')
-  const [query,        setQuery]        = useState('')
-  const [searching,    setSearching]    = useState(false)
-  const [results,      setResults]      = useState([])   // array for name search
-  const [dirFound,     setDirFound]     = useState(null) // single selected profile
-  const [form,         setForm]         = useState(EMPTY)
-  const [loading,      setLoading]      = useState(false)
+  const [mode,      setMode]      = useState('manual')
+  const [query,     setQuery]     = useState('')
+  const [searching, setSearching] = useState(false)
+  const [results,   setResults]   = useState([])
+  const [dirFound,  setDirFound]  = useState(null)
+  const [form,      setForm]      = useState(EMPTY)
+  const [loading,   setLoading]   = useState(false)
+  const debounceRef = useRef(null)
 
   useEffect(() => {
     if (isOpen && prefill) {
@@ -39,38 +40,34 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
     }
   }, [isOpen, prefill])
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
-
-  const isPhoneQuery = (q) => q.replace(/\D/g, '').length >= 10
-
-  const handleSearch = async () => {
+  // Live search: trigger on every keystroke with 200ms debounce
+  useEffect(() => {
+    if (mode !== 'directory' || dirFound) return
+    clearTimeout(debounceRef.current)
     const q = query.trim()
-    if (!q) return
-    setSearching(true)
-    setResults([])
-    setDirFound(null)
+    if (q.length < 2) { setResults([]); return }
 
-    try {
-      if (isPhoneQuery(q)) {
-        const phone = q.replace(/\D/g, '').slice(-10)
-        const profile = await lookupDevoteeByPhone(phone)
-        if (profile) {
-          // Phone: single definitive match — show as results list for consistency
-          setResults([profile])
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const isPhone = q.replace(/\D/g, '').length >= 10
+        if (isPhone) {
+          const phone = q.replace(/\D/g, '').slice(-10)
+          const profile = await lookupDevoteeByPhone(phone)
+          setResults(profile ? [profile] : [])
         } else {
-          showToast('Not found in directory', 'warning')
-        }
-      } else {
-        const list = await lookupDevoteesByName(q)
-        if (list.length === 0) {
-          showToast('No matches — try different spelling or use phone number', 'warning')
-        } else {
+          const list = await lookupDevoteesByName(q)
           setResults(list)
         }
-      }
-    } catch { showToast('Directory lookup failed', 'error') }
-    finally { setSearching(false) }
-  }
+      } catch { setResults([]) }
+      finally { setSearching(false) }
+    }, 200)
+
+    return () => clearTimeout(debounceRef.current)
+  }, [query, mode, dirFound])
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const isPhoneQuery = (q) => q.replace(/\D/g, '').length >= 10
 
   const selectResult = (profile) => {
     setDirFound(profile)
@@ -94,6 +91,7 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
   }
 
   const handleClose = () => {
+    clearTimeout(debounceRef.current)
     setForm(EMPTY); setQuery(''); setResults([]); setDirFound(null); setMode('manual')
     onClose()
   }
@@ -116,7 +114,7 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
             { id: 'directory', icon: '📂', label: 'From Directory' },
             { id: 'manual',    icon: '✍️', label: 'Manual'         },
           ].map(({ id, icon, label }) => (
-            <button key={id} onClick={() => { setMode(id); setResults([]); setDirFound(null); if (id === 'directory') { setQuery(''); setForm(EMPTY) } }}
+            <button key={id} onClick={() => { clearTimeout(debounceRef.current); setMode(id); setResults([]); setDirFound(null); setQuery(''); if (id === 'directory') setForm(EMPTY) }}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all
                 ${mode === id ? 'bg-white text-primary shadow-sm' : 'text-ink-3 hover:text-ink'}`}>
               {icon} {label}
@@ -127,25 +125,25 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
         {/* Directory search */}
         {mode === 'directory' && (
           <div className="space-y-3">
-            <div className="flex gap-2">
+            <div className="relative">
               <input
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setResults([]); setDirFound(null) }}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="input-field flex-1"
-                placeholder="Name or 10-digit phone number"
+                onChange={(e) => { setQuery(e.target.value); setDirFound(null) }}
+                className="input-field pr-9"
+                placeholder="Type name or phone to search…"
                 autoFocus
               />
-              <button onClick={handleSearch} disabled={searching || !query.trim()} className="btn-primary shrink-0 px-4">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {searching
-                  ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                  : '🔍 Search'}
-              </button>
+                  ? <span className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin block" />
+                  : <span className="text-ink-4 text-sm">🔍</span>}
+              </div>
             </div>
-
-            <p className="text-ink-4 text-xs">
-              {isPhoneQuery(query) ? '📞 Phone search — exact match' : query.length >= 2 ? '🔤 Name search — prefix match' : 'Type a name or 10-digit phone to search'}
-            </p>
+            {query.length >= 2 && !dirFound && (
+              <p className="text-ink-4 text-xs">
+                {isPhoneQuery(query) ? '📞 Phone search' : `🔤 Name search${results.length > 0 ? ` — ${results.length} match${results.length > 1 ? 'es' : ''}` : query.length >= 2 && !searching ? ' — no matches' : ''}`}
+              </p>
+            )}
 
             {/* Results list — always shown before selection */}
             {results.length > 0 && !dirFound && (
