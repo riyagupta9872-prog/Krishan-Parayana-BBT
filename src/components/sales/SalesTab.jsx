@@ -548,7 +548,7 @@ export default function SalesTab() {
                 const icons  = { cash:'💵', credit:'📋', gift:'🎁' }
                 return (
                   <div key={type} className={`rounded-xl border p-2 text-center ${colors[type]}`}>
-                    <p className="text-xs font-medium opacity-70">{icons[type]} {type}</p>
+                    <p className="text-xs font-medium opacity-70 capitalize">{icons[type]} {type}</p>
                     <p className="font-bold text-sm">{fmt.currency(total)}</p>
                     <p className="text-xs opacity-60">{t.length} sales</p>
                   </div>
@@ -564,7 +564,7 @@ export default function SalesTab() {
                 <button key={f} onClick={() => setHistFilter(f)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize
                     ${histFilter===f?'bg-primary text-white border-primary':'bg-white border-border-lt text-ink-3'}`}>
-                  {f === 'all' ? 'All' : f}
+                  {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
               ))}
             </div>
