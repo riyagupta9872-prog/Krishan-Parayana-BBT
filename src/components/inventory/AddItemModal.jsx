@@ -4,8 +4,15 @@ import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { inventoryService } from '../../services/inventoryService'
 
+const GROUPS = [
+  { id: 'apparel',     label: '👘 Apparel'     },
+  { id: 'accessories', label: '📿 Accessories' },
+  { id: 'books',       label: '📚 Books'        },
+  { id: 'stationery',  label: '🃏 Stationery'   },
+]
+
 const EMPTY = {
-  name: '', subVariant: '', productGroup: '',
+  name: '', subVariant: '', productGroup: '', group: 'accessories',
   sellingPrice: '', costPrice: '', qty: 0, lowStockThreshold: 5,
   status: 'active', isGift: false,
 }
@@ -25,6 +32,7 @@ export default function AddItemModal({ isOpen, onClose, editItem = null }) {
         sellingPrice: editItem.sellingPrice ?? '',
         costPrice:    editItem.costPrice    ?? '',
         productGroup: editItem.productGroup || editItem.category || editItem.name || '',
+        group:        editItem.group || 'accessories',
       })
     } else {
       setForm(EMPTY)
@@ -61,6 +69,19 @@ export default function AddItemModal({ isOpen, onClose, editItem = null }) {
         <div>
           <label className="label">Product Name *</label>
           <input value={form.name} onChange={(e) => set('name', e.target.value)} className="input-field" placeholder="e.g. Kurta, Kanthi Mala, Bhagavad Gita" autoFocus />
+        </div>
+
+        <div>
+          <label className="label">Category Group *</label>
+          <div className="grid grid-cols-4 gap-2">
+            {GROUPS.map(g => (
+              <button key={g.id} type="button" onClick={() => set('group', g.id)}
+                className={`py-2 rounded-lg text-xs font-semibold border transition-all
+                  ${form.group === g.id ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white border-border-lt text-ink-3 hover:border-primary'}`}>
+                {g.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

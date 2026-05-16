@@ -172,9 +172,20 @@ function CatalogTab({ items, isSuperAdmin, onEdit, onAdjust }) {
   }
 
   const catList = CAT_GROUPS[catGrp]
+  const matchesGroup = (i) => {
+    if (!catList) return true
+    // Check new group field first (set by AddItemModal)
+    if (i.group) {
+      if (catGrp === 'Apparel')     return i.group === 'apparel'
+      if (catGrp === 'Accessories') return i.group === 'accessories' || i.group === 'stationery'
+      if (catGrp === 'Books')       return i.group === 'books'
+    }
+    // Fallback: old category name matching
+    return catList.includes(i.category)
+  }
   const filtered = items
     .filter((i) => i.status !== 'inactive' || isSuperAdmin)
-    .filter((i) => !catList || catList.includes(i.category))
+    .filter(matchesGroup)
     .filter((i) => !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.subCategory?.toLowerCase().includes(search.toLowerCase()) || i.author?.toLowerCase().includes(search.toLowerCase()))
     .sort(SORT_FNS[sort] || SORT_FNS.name)
 
@@ -653,8 +664,8 @@ function ValuationTab({ items, isSuperAdmin }) {
 
   const byCategory = {}
   active.forEach((i) => {
-    const grp = CATEGORIES.APPAREL.includes(i.category) ? 'Apparel'
-      : CATEGORIES.BOOKS.includes(i.category) ? 'Books' : 'Accessories'
+    const grp = (i.group === 'apparel' || CATEGORIES.APPAREL.includes(i.category)) ? 'Apparel'
+      : (i.group === 'books' || CATEGORIES.BOOKS.includes(i.category)) ? 'Books' : 'Accessories'
     if (!byCategory[grp]) byCategory[grp] = { mrp: 0, cost: 0, units: 0, items: 0 }
     byCategory[grp].mrp   += i.qty * (i.sellingPrice || 0)
     byCategory[grp].cost  += i.qty * (i.costPrice    || 0)
