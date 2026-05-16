@@ -1,10 +1,9 @@
 /**
  * Devotee Directory Service
  * Connects to the Sakhi Sang Firebase project as a read-only secondary app.
- * Looks up devotee profiles by mobile number from the `devotees` collection.
  */
-import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore'
+import { initializeApp, getApps } from 'firebase/app'
+import { getFirestore, collection, query, where, getDocs, limit } from 'firebase/firestore'
 
 const DIRECTORY_CONFIG = {
   apiKey:            'AIzaSyCxxLIiOy0bGus2NkkSod7_LBVHah5-sz0',
@@ -25,7 +24,6 @@ function getDirectoryDb() {
 
 /**
  * Look up a devotee by phone number.
- * Returns the full devotee document or null if not found.
  */
 export async function lookupDevoteeByPhone(phone) {
   if (!phone) return null
@@ -33,8 +31,6 @@ export async function lookupDevoteeByPhone(phone) {
   if (normalized.length < 10) return null
 
   const db = getDirectoryDb()
-
-  // Try both camelCase (Firestore) and the normalized number
   const fieldNames = ['mobile', 'phone', 'mobile1', 'mobileAlt']
   for (const field of fieldNames) {
     try {
@@ -49,6 +45,36 @@ export async function lookupDevoteeByPhone(phone) {
     }
   }
   return null
+}
+
+/**
+ * Search devotees by name prefix. Returns up to 10 results.
+ * Tries multiple case variants since Firestore prefix search is case-sensitive.
+ */
+export async function lookupDevoteesByName(name) {
+  if (!name || name.trim().length < 2) return []
+  const db = getDirectoryDb()
+  const results = new Map()
+
+  const raw = name.trim()
+  // Build case variants to maximise matches
+  const titleCase = raw.replace(/\b\w/g, (c) => c.toUpperCase())
+  const ucFirst   = raw.charAt(0).toUpperCase() + raw.slice(1)
+  const lower     = raw.toLowerCase()
+
+  for (const v of [...new Set([titleCase, ucFirst, lower, raw])]) {
+    try {
+      const end  = v.slice(0, -1) + String.fromCharCode(v.charCodeAt(v.length - 1) + 1)
+      const snap = await getDocs(
+        query(collection(db, 'devotees'),
+          where('name', '>=', v),
+          where('name', '<',  end),
+          limit(10))
+      )
+      snap.docs.forEach((d) => results.set(d.id, { id: d.id, ...d.data() }))
+    } catch { /* field unavailable */ }
+  }
+  return [...results.values()].slice(0, 10)
 }
 
 /**

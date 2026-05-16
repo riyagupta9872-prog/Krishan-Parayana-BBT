@@ -647,8 +647,15 @@ export default function SalesTab() {
             </p>
             <p className="font-bold text-danger mb-3">{fmt.currency(deleteTxn.totalAmount)}</p>
             {deleteTxn.status !== 'voided' && (
-              <div className="bg-warning-lt border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-ink-2">
-                ⚠ Stock will be <strong>restored</strong> for all items in this transaction.
+              <div className="space-y-2 mb-4">
+                <div className="bg-warning-lt border border-amber-200 rounded-lg px-3 py-2 text-xs text-ink-2">
+                  ⚠ Stock will be <strong>restored</strong> for all items.
+                </div>
+                {deleteTxn.saleType === 'credit' && deleteTxn.debtorId && (
+                  <div className="bg-primary-lt border border-border-blue rounded-lg px-3 py-2 text-xs text-ink-2">
+                    📋 Debtor balance will be <strong>reduced by {fmt.currency(deleteTxn.totalAmount)}</strong> (reversal entry added to ledger).
+                  </div>
+                )}
               </div>
             )}
             <p className="text-ink-4 text-xs mb-4">This permanently removes the record and cannot be undone.</p>

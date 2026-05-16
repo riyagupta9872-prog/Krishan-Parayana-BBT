@@ -62,8 +62,10 @@ export const transactionService = {
   },
 
   async deleteTransaction(txnId, txn) {
-    // Restore stock only if transaction was not already voided (void already restores)
-    if (txn.status !== 'voided' && (txn.items || []).length > 0) {
+    const wasCompleted = txn.status !== 'voided'
+
+    // 1. Restore stock if not already voided
+    if (wasCompleted && (txn.items || []).length > 0) {
       const batch = writeBatch(db)
       for (const item of txn.items) {
         batch.set(doc(db, 'inventory', item.skuId), {
@@ -72,6 +74,19 @@ export const transactionService = {
       }
       await batch.commit()
     }
+
+    // 2. Reverse debtor balance if it was a credit sale that hasn't been voided
+    if (wasCompleted && txn.saleType === 'credit' && txn.debtorId && txn.totalAmount > 0) {
+      const desc = (txn.items || []).map((i) => `${i.name} ×${i.qty}`).join(', ')
+      await debtorService.addLedgerEntry(txn.debtorId, {
+        type: 'credit',
+        description: `Transaction deleted — reversal of: ${desc}`,
+        amount: txn.totalAmount,
+        relatedTxnId: txnId,
+      })
+    }
+
+    // 3. Delete the transaction document
     return deleteDoc(doc(db, COL, txnId))
   },
 
