@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../common/Modal'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
@@ -8,16 +8,32 @@ import { fmt } from '../../utils/formatters'
 
 const EMPTY = { name: '', phone: '', reference: '', teamName: '', openingBalance: '', creditLimit: '' }
 
-export default function AddDebtorModal({ isOpen, onClose }) {
+export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
   const { user, isSuperAdmin } = useAuth()
   const { showToast } = useApp()
 
-  const [mode,        setMode]        = useState('manual') // 'manual' | 'directory'
+  const [mode,        setMode]        = useState('manual')
   const [dirPhone,    setDirPhone]    = useState('')
   const [dirSearching,setDirSearching]= useState(false)
   const [dirFound,    setDirFound]    = useState(null)
   const [form,        setForm]        = useState(EMPTY)
   const [loading,     setLoading]     = useState(false)
+
+  // Apply prefill when modal opens with directory data (from Sales picker)
+  useEffect(() => {
+    if (isOpen && prefill) {
+      setDirFound(prefill)
+      setMode('directory')
+      setForm({
+        name:           prefill.name        || '',
+        phone:          prefill.mobile      || '',
+        reference:      prefill.referenceBy || '',
+        teamName:       prefill.teamName    || '',
+        openingBalance: '',
+        creditLimit:    '',
+      })
+    }
+  }, [isOpen, prefill])
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 

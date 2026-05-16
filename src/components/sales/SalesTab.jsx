@@ -7,6 +7,7 @@ import { transactionService } from '../../services/transactionService'
 import { useFirestoreSubscription } from '../../hooks/useFirestore'
 import { fmt, saleTypeBadge } from '../../utils/formatters'
 import AddDebtorModal from '../debtors/AddDebtorModal'
+import { lookupDevoteeByPhone } from '../../services/directoryService'
 import { computeAgingForDebtor } from '../../utils/agingUtils'
 import { PageLoader } from '../common/LoadingSpinner'
 import FirestoreRulesAlert from '../common/FirestoreRulesAlert'
@@ -163,6 +164,112 @@ function ProductPicker({ items, basket, onAdd }) {
   )
 }
 
+/* ─── Debtor Picker (searchable) ────────────────────────────────── */
+function DebtorPicker({ debtors, value, onChange, onAddNew }) {
+  const [query,      setQuery]      = useState('')
+  const [open,       setOpen]       = useState(false)
+  const [dirResult,  setDirResult]  = useState(null)
+  const [dirSearching, setDirSearching] = useState(false)
+
+  const selected = debtors.find(d => d.id === value)
+
+  const filtered = query.trim()
+    ? debtors.filter(d =>
+        d.name.toLowerCase().includes(query.toLowerCase()) ||
+        d.phone?.includes(query.replace(/\D/g, ''))
+      )
+    : debtors
+
+  // Directory lookup if query looks like a phone number
+  useEffect(() => {
+    const q = query.replace(/\D/g, '')
+    if (q.length === 10) {
+      setDirSearching(true)
+      lookupDevoteeByPhone(q)
+        .then(setDirResult).catch(() => setDirResult(null))
+        .finally(() => setDirSearching(false))
+    } else { setDirResult(null) }
+  }, [query])
+
+  const select = (debtor) => { onChange(debtor.id); setQuery(''); setOpen(false) }
+  const clear  = () => { onChange(''); setQuery(''); setOpen(false) }
+
+  return (
+    <div className="relative">
+      {/* Input */}
+      <div className={`flex items-center gap-2 input-field cursor-text ${open ? 'ring-2 ring-primary/30 border-primary' : ''}`}
+        onClick={() => setOpen(true)}>
+        {selected && !open ? (
+          <div className="flex items-center justify-between w-full">
+            <div>
+              <p className="text-ink font-semibold text-sm">{selected.name}</p>
+              <p className="text-ink-4 text-xs">{fmt.phone(selected.phone)} · {fmt.currency(selected.currentBalance || 0)} outstanding</p>
+            </div>
+            <button onClick={(e) => { e.stopPropagation(); clear() }} className="text-ink-4 hover:text-danger text-sm ml-2">✕</button>
+          </div>
+        ) : (
+          <input
+            autoFocus={open}
+            value={query}
+            onChange={e => { setQuery(e.target.value); setOpen(true) }}
+            onFocus={() => setOpen(true)}
+            placeholder="Type name or phone to search…"
+            className="flex-1 outline-none bg-transparent text-sm text-ink placeholder:text-ink-4"
+          />
+        )}
+        {dirSearching && <div className="w-4 h-4 border border-primary/20 border-t-primary rounded-full animate-spin shrink-0" />}
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 w-full mt-1 bg-white border border-border-lt rounded-xl shadow-modal max-h-64 overflow-y-auto">
+
+            {filtered.length === 0 && !dirResult && !dirSearching && (
+              <p className="text-ink-3 text-xs text-center py-4">No debtors match "{query}"</p>
+            )}
+
+            {filtered.map(d => (
+              <button key={d.id} onClick={() => select(d)}
+                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-primary-lt text-left border-b border-border-lt last:border-0">
+                <div>
+                  <p className="text-ink font-semibold text-sm">{d.name}</p>
+                  <p className="text-ink-4 text-xs">{fmt.phone(d.phone)}</p>
+                </div>
+                <span className={`text-xs font-semibold ${(d.currentBalance||0) > 0 ? 'text-danger' : 'text-ink-3'}`}>
+                  {fmt.currency(d.currentBalance || 0)}
+                </span>
+              </button>
+            ))}
+
+            {/* Directory result */}
+            {dirResult && !debtors.find(d => d.phone === dirResult.mobile) && (
+              <div className="px-4 py-2.5 bg-primary-lt border-t border-border-blue">
+                <p className="text-ink-4 text-xs font-medium mb-1">📂 Found in Sakhi Sang Directory</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-primary font-bold text-sm">{dirResult.name}</p>
+                    <p className="text-ink-3 text-xs">{fmt.phone(dirResult.mobile)}{dirResult.teamName ? ` · ${dirResult.teamName}` : ''}</p>
+                  </div>
+                  <button onClick={() => { setOpen(false); onAddNew('directory', dirResult) }}
+                    className="btn-primary text-xs px-3 py-1.5 min-h-0 h-7">+ Add</button>
+                </div>
+              </div>
+            )}
+
+            {/* Add new */}
+            <button onClick={() => { setOpen(false); onAddNew('manual') }}
+              className="w-full text-center px-4 py-2.5 text-primary text-xs font-semibold hover:bg-primary-lt border-t border-border-lt">
+              + Add New Debtor{query ? ` "${query}"` : ''}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 /* ─── Main SalesTab ──────────────────────────────────────────────── */
 export default function SalesTab() {
   const { user, isSuperAdmin } = useAuth()
@@ -176,9 +283,10 @@ export default function SalesTab() {
   const [debtors,  setDebtors]  = useState([])
   const [warning,  setWarning]  = useState(null)
   const [notes,    setNotes]    = useState('')
-  const [loading,       setLoading]       = useState(false)
-  const [histFilter,    setHistFilter]    = useState('all')
-  const [showAddDebtor, setShowAddDebtor] = useState(false)
+  const [loading,          setLoading]          = useState(false)
+  const [histFilter,       setHistFilter]       = useState('all')
+  const [showAddDebtor,    setShowAddDebtor]    = useState(false)
+  const [addDebtorPrefill, setAddDebtorPrefill] = useState(null)
 
   // Date range
   const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -357,16 +465,16 @@ export default function SalesTab() {
 
                 {saleType === 'credit' && (
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="label mb-0">Assign to Debtor *</label>
-                      <button onClick={() => setShowAddDebtor(true)} className="text-primary text-xs font-semibold hover:underline">+ Add New Debtor</button>
-                    </div>
-                    <select value={debtorId} onChange={(e)=>setDebtorId(e.target.value)} className="select-field">
-                      <option value="">— Select Debtor —</option>
-                      {debtors.map((d)=>(
-                        <option key={d.id} value={d.id}>{d.name} — {fmt.currency(d.currentBalance||0)} outstanding</option>
-                      ))}
-                    </select>
+                    <label className="label">Assign to Debtor *</label>
+                    <DebtorPicker
+                      debtors={debtors}
+                      value={debtorId}
+                      onChange={setDebtorId}
+                      onAddNew={(mode, prefill) => {
+                        setAddDebtorPrefill(prefill || null)
+                        setShowAddDebtor(true)
+                      }}
+                    />
                     {warning && (
                       <div className={`mt-2 p-2.5 rounded-lg text-xs font-body font-medium
                         ${warning.type==='block'?'bg-danger-lt border border-red-200 text-danger':
@@ -512,10 +620,15 @@ export default function SalesTab() {
         </div>
       )}
 
-      <AddDebtorModal isOpen={showAddDebtor} onClose={() => {
-        setShowAddDebtor(false)
-        if (saleType === 'credit') debtorService.getAll().then(list => setDebtors(list.filter(d => d.status !== 'blocked' || isSuperAdmin)))
-      }} />
+      <AddDebtorModal
+        isOpen={showAddDebtor}
+        prefill={addDebtorPrefill}
+        onClose={() => {
+          setShowAddDebtor(false)
+          setAddDebtorPrefill(null)
+          if (saleType === 'credit') debtorService.getAll().then(list => setDebtors(list.filter(d => d.status !== 'blocked' || isSuperAdmin)))
+        }}
+      />
     </div>
   )
 }
