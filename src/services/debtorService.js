@@ -1,7 +1,9 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, getDoc, deleteDoc,
+  collection, doc, addDoc, updateDoc, setDoc, getDocs, getDoc, deleteDoc,
   onSnapshot, serverTimestamp, query, orderBy, writeBatch
 } from 'firebase/firestore'
+
+const strip = ({ id: _id, ...rest }) => rest
 import { db } from './firebase'
 
 const COL = 'debtors'
@@ -23,7 +25,7 @@ export const debtorService = {
 
   async getById(id) {
     const snap = await getDoc(doc(db, COL, id))
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null
+    return snap.exists() ? { ...snap.data(), id: snap.id } : null
   },
 
   async add(data, uid) {
@@ -52,7 +54,7 @@ export const debtorService = {
   },
 
   async update(id, data) {
-    return updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+    return setDoc(doc(db, COL, id), { ...strip(data), updatedAt: serverTimestamp() }, { merge: true })
   },
 
   async delete(id) {
@@ -99,9 +101,9 @@ export const debtorService = {
       ...(entry.type === 'debit' ? { billStatus: 'open', paidAmount: 0 } : {}),
     })
     const newStatus = runningBalance <= 0 ? (runningBalance < 0 ? 'credit' : 'settled') : 'active'
-    await updateDoc(doc(db, COL, debtorId), {
+    await setDoc(doc(db, COL, debtorId), {
       status: newStatus, lastTransactionDate: serverTimestamp(), currentBalance: runningBalance,
-    })
+    }, { merge: true })
     return entryRef
   },
 

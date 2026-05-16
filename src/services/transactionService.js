@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, getDoc,
+  collection, doc, addDoc, updateDoc, setDoc, getDocs, getDoc,
   onSnapshot, serverTimestamp, query, orderBy, writeBatch, increment, limit
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -29,7 +29,7 @@ export const transactionService = {
     const txnRef = doc(collection(db, COL))
 
     batch.set(txnRef, {
-      id: generateTxnId(),
+      refNo: generateTxnId(),
       date: serverTimestamp(),
       items: saleData.items,
       totalAmount: saleData.totalAmount,
@@ -41,9 +41,9 @@ export const transactionService = {
     })
 
     for (const item of saleData.items) {
-      batch.update(doc(db, 'inventory', item.skuId), {
+      batch.set(doc(db, 'inventory', item.skuId), {
         qty: increment(-item.qty), updatedAt: serverTimestamp(),
-      })
+      }, { merge: true })
     }
 
     await batch.commit()
@@ -69,14 +69,14 @@ export const transactionService = {
     if (txn.status === 'voided') throw new Error('Already voided')
 
     const batch = writeBatch(db)
-    batch.update(txnRef, {
+    batch.set(txnRef, {
       status: 'voided', voidedAt: serverTimestamp(),
       voidReason: reason, voidedBy: `${uid}|${displayName}`,
-    })
+    }, { merge: true })
     for (const item of txn.items) {
-      batch.update(doc(db, 'inventory', item.skuId), {
+      batch.set(doc(db, 'inventory', item.skuId), {
         qty: increment(item.qty), updatedAt: serverTimestamp(),
-      })
+      }, { merge: true })
     }
     await batch.commit()
     await auditService.log('VOID_TRANSACTION', txnId, txn, { ...txn, status: 'voided', voidReason: reason }, uid)
