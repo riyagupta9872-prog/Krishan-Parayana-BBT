@@ -37,7 +37,7 @@ export const debtorService = {
       openingBalance: Number(data.openingBalance) || 0,
       creditLimit: Number(data.creditLimit) || 0,
       currentBalance: 0,
-      status: 'active',
+      status: Number(data.openingBalance) > 0 ? 'active' : 'settled',
       createdAt: serverTimestamp(),
       createdBy: uid,
       lastTransactionDate: null,

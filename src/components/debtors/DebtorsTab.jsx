@@ -16,6 +16,15 @@ const STATUS_BADGE = {
   active: 'badge-blue', settled: 'badge-green', blocked: 'badge-red', credit: 'badge-amber',
 }
 
+// Compute status from balance (overrides stale stored status, except for 'blocked')
+function effectiveStatus(debtor) {
+  if (debtor.status === 'blocked') return 'blocked'
+  const bal = debtor.currentBalance || 0
+  if (bal < 0) return 'credit'
+  if (bal === 0) return 'settled'
+  return 'active'
+}
+
 /* ── Debtor card ─────────────────────────────────────────────────── */
 function DebtorCard({ debtor, onView }) {
   const balance   = debtor.currentBalance || 0
@@ -37,7 +46,7 @@ function DebtorCard({ debtor, onView }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-ink font-bold text-sm">{debtor.name}</span>
-            <span className={`badge text-xs ${STATUS_BADGE[debtor.status] || 'badge-gray'}`}>{debtor.status}</span>
+            <span className={`badge text-xs ${STATUS_BADGE[effectiveStatus(debtor)] || 'badge-gray'}`}>{effectiveStatus(debtor)}</span>
           </div>
 
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -120,7 +129,7 @@ export default function DebtorsTab() {
       d.phone?.includes(search.replace(/\D/g, '')) ||
       d.reference?.toLowerCase().includes(q) ||
       d.teamName?.toLowerCase().includes(q)) &&
-      (statusFilter === 'all' || d.status === statusFilter)
+      (statusFilter === 'all' || effectiveStatus(d) === statusFilter)
   })
   if      (sort === 'balance') filtered.sort((a, b) => (b.currentBalance||0) - (a.currentBalance||0))
   else if (sort === 'name')    filtered.sort((a, b) => a.name.localeCompare(b.name))
@@ -149,7 +158,7 @@ export default function DebtorsTab() {
         <div>
           <h2 className="page-title text-lg">Debtors</h2>
           <p className="text-ink-3 text-xs mt-0.5">
-            {debtors.filter(d => d.status === 'active').length} active · {fmt.currency(totalOutstanding)} outstanding
+            {debtors.filter(d => effectiveStatus(d) === 'active').length} active · {fmt.currency(totalOutstanding)} outstanding
           </p>
         </div>
         <div className="flex gap-2">
@@ -162,7 +171,7 @@ export default function DebtorsTab() {
       <div className="grid grid-cols-3 gap-3">
         <div className="card bg-primary-lt border-border-blue text-center">
           <p className="text-ink-3 text-xs font-medium">Active</p>
-          <p className="font-bold text-primary text-xl">{debtors.filter(d=>d.status==='active').length}</p>
+          <p className="font-bold text-primary text-xl">{debtors.filter(d=>effectiveStatus(d)==='active').length}</p>
         </div>
         <div className="card border-red-200 text-center">
           <p className="text-ink-3 text-xs font-medium">Outstanding</p>
@@ -225,11 +234,11 @@ export default function DebtorsTab() {
           {filtered.map((d) => (
             <div key={d.id} className="relative group">
               <DebtorCard debtor={d} onView={() => setSelected(d)} />
-              {isSuperAdmin && d.status !== 'blocked' && (
+              {isSuperAdmin && effectiveStatus(d) !== 'blocked' && (
                 <button onClick={(e) => { e.stopPropagation(); setBlockTarget(d) }}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 btn-danger text-xs px-2 py-0.5 min-h-0 h-6 transition-opacity">Block</button>
               )}
-              {isSuperAdmin && d.status === 'blocked' && (
+              {isSuperAdmin && effectiveStatus(d) === 'blocked' && (
                 <button onClick={async (e) => { e.stopPropagation(); await debtorService.unblock(d.id); showToast('Unblocked', 'success') }}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 btn-success text-xs px-2 py-0.5 min-h-0 h-6 transition-opacity">Unblock</button>
               )}
