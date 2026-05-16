@@ -48,7 +48,7 @@ function ActivityItem({ txn }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-ink text-xs font-body font-medium truncate">
-          {txn.items?.map((i) => `${i.name} ×${i.qty}`).join(', ') || 'Transaction'}
+          {txn.items?.map((i) => `${i.name} ×${i.qty}`)?.join(', ') || 'Transaction'}
         </p>
         <p className="text-ink-4 text-xs">{fmt.shortDate(txn.date)}</p>
       </div>

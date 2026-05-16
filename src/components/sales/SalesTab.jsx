@@ -481,7 +481,7 @@ export default function SalesTab() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-ink font-semibold text-sm truncate">
-                        {txn.items?.map((i)=>`${i.name} ×${i.qty}`).join(', ')}
+                        {txn.items?.map((i)=>`${i.name} ×${i.qty}`)?.join(', ') || '—'}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-ink-4 text-xs">{fmt.dateTime(txn.date)}</span>
