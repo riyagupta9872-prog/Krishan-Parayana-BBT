@@ -52,25 +52,18 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
 
     try {
       if (isPhoneQuery(q)) {
-        // Phone lookup — single result
         const phone = q.replace(/\D/g, '').slice(-10)
         const profile = await lookupDevoteeByPhone(phone)
         if (profile) {
-          setDirFound(profile)
-          setForm(prefillFromProfile(profile, phone))
-          showToast(`Found: ${profile.name}`, 'success')
+          // Phone: single definitive match — show as results list for consistency
+          setResults([profile])
         } else {
-          showToast('Not found in directory — fill manually', 'warning')
+          showToast('Not found in directory', 'warning')
         }
       } else {
-        // Name search — multiple results
         const list = await lookupDevoteesByName(q)
         if (list.length === 0) {
-          showToast('No matches found — try a different spelling or use phone', 'warning')
-        } else if (list.length === 1) {
-          setDirFound(list[0])
-          setForm(prefillFromProfile(list[0]))
-          showToast(`Found: ${list[0].name}`, 'success')
+          showToast('No matches — try different spelling or use phone number', 'warning')
         } else {
           setResults(list)
         }
@@ -123,7 +116,7 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
             { id: 'directory', icon: '📂', label: 'From Directory' },
             { id: 'manual',    icon: '✍️', label: 'Manual'         },
           ].map(({ id, icon, label }) => (
-            <button key={id} onClick={() => { setMode(id); setResults([]); setDirFound(null) }}
+            <button key={id} onClick={() => { setMode(id); setResults([]); setDirFound(null); if (id === 'directory') { setQuery(''); setForm(EMPTY) } }}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all
                 ${mode === id ? 'bg-white text-primary shadow-sm' : 'text-ink-3 hover:text-ink'}`}>
               {icon} {label}
@@ -154,46 +147,59 @@ export default function AddDebtorModal({ isOpen, onClose, prefill = null }) {
               {isPhoneQuery(query) ? '📞 Phone search — exact match' : query.length >= 2 ? '🔤 Name search — prefix match' : 'Type a name or 10-digit phone to search'}
             </p>
 
-            {/* Multiple name results */}
-            {results.length > 0 && (
-              <div className="border border-border-lt rounded-xl overflow-hidden">
-                <p className="text-ink-3 text-xs px-3 py-2 bg-slate-50 border-b border-border-lt">
-                  {results.length} match{results.length > 1 ? 'es' : ''} found — tap to select
-                </p>
-                {results.map((profile) => (
-                  <button key={profile.id} onClick={() => selectResult(profile)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-border-lt last:border-0 hover:bg-primary-lt text-left transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-primary-md flex items-center justify-center shrink-0">
-                      <span className="text-primary text-xs font-bold">
-                        {profile.name?.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-ink font-semibold text-sm truncate">{profile.name}</p>
-                      <p className="text-ink-4 text-xs">
-                        {fmt.phone(profile.mobile)}
-                        {profile.teamName ? ` · ${profile.teamName}` : ''}
-                      </p>
-                    </div>
-                    <span className="text-primary text-xs">Select →</span>
-                  </button>
-                ))}
+            {/* Results list — always shown before selection */}
+            {results.length > 0 && !dirFound && (
+              <div className="border border-border-blue rounded-xl overflow-hidden shadow-sm">
+                <div className="px-3 py-2 bg-primary-lt border-b border-border-blue flex items-center justify-between">
+                  <p className="text-primary text-xs font-semibold">
+                    {results.length} result{results.length > 1 ? 's' : ''} found
+                  </p>
+                  <p className="text-ink-4 text-xs">Tap a row to select</p>
+                </div>
+                {results.map((profile) => {
+                  const initials = profile.name?.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase() || '?'
+                  return (
+                    <button key={profile.id} onClick={() => selectResult(profile)}
+                      className="w-full flex items-center gap-3 px-3 py-3 border-b border-border-lt last:border-0 hover:bg-primary-lt active:bg-primary/10 text-left transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-primary-md border border-primary/20 flex items-center justify-center shrink-0">
+                        <span className="text-primary text-xs font-bold">{initials}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-ink font-semibold text-sm">{profile.name}</p>
+                        <p className="text-ink-3 text-xs mt-0.5">
+                          📞 {fmt.phone(profile.mobile || profile.phone)}
+                        </p>
+                        {(profile.teamName || profile.referenceBy) && (
+                          <p className="text-ink-4 text-xs mt-0.5">
+                            {profile.teamName && <span>👥 {profile.teamName}</span>}
+                            {profile.teamName && profile.referenceBy && <span className="mx-1">·</span>}
+                            {profile.referenceBy && <span>Ref: {profile.referenceBy}</span>}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-primary font-semibold text-xs shrink-0">Select →</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
 
-            {/* Selected profile card */}
-            {dirFound && results.length === 0 && (
-              <div className="card border-border-blue bg-primary-lt">
+            {/* Selected profile confirmation */}
+            {dirFound && (
+              <div className="card border-green-200 bg-success-lt">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-primary font-bold text-sm">{dirFound.name}</p>
-                    <p className="text-ink-3 text-xs">{fmt.phone(dirFound.mobile)}{dirFound.teamName ? ` · ${dirFound.teamName}` : ''}</p>
-                    {dirFound.referenceBy && <p className="text-ink-3 text-xs">Ref: <span className="text-ink font-medium">{dirFound.referenceBy}</span></p>}
+                    <p className="text-success font-bold text-sm">✓ {dirFound.name}</p>
+                    <p className="text-ink-3 text-xs mt-0.5">
+                      📞 {fmt.phone(dirFound.mobile || dirFound.phone)}
+                      {dirFound.teamName ? ` · ${dirFound.teamName}` : ''}
+                    </p>
+                    {dirFound.referenceBy && <p className="text-ink-3 text-xs">Ref: {dirFound.referenceBy}</p>}
                   </div>
-                  <button onClick={() => { setDirFound(null); setForm(EMPTY) }}
-                    className="text-ink-4 hover:text-ink text-xs">✕</button>
+                  <button onClick={() => { setDirFound(null); setResults([]); setForm(EMPTY) }}
+                    className="text-ink-4 hover:text-danger text-sm leading-none">✕</button>
                 </div>
-                <p className="text-success text-xs mt-1.5 font-medium">✓ Form pre-filled below — review and save</p>
+                <p className="text-success text-xs mt-1.5">Form pre-filled below — review and add</p>
               </div>
             )}
           </div>
