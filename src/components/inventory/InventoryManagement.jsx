@@ -448,7 +448,7 @@ function StockInTab({ items, isSuperAdmin }) {
               <select value={itemId} onChange={(e) => { setItemId(e.target.value); const it = items.find(i=>i.id===e.target.value); if(it&&isSuperAdmin) setCostPerUnit(it.costPrice||'') }} className="select-field">
                 <option value="">— Select Product —</option>
                 {items.filter(i=>i.status!=='out-of-print').map(i=>(
-                  <option key={i.id} value={i.id}>{i.name} ({i.category}) — {i.qty} in stock</option>
+                  <option key={i.id} value={i.id}>{i.subVariant ? `${i.productGroup||i.category} · ${i.subVariant}` : i.name} — {i.qty} in stock</option>
                 ))}
               </select>
             </div>

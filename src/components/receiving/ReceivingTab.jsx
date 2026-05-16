@@ -49,7 +49,7 @@ function RecordReceivingModal({ isOpen, onClose, inventory, isSuperAdmin }) {
           <select value={itemId} onChange={(e)=>setItemId(e.target.value)} className="select-field">
             <option value="">— Select Item —</option>
             {inventory.filter(i=>i.status!=='out-of-print').map(i=>(
-              <option key={i.id} value={i.id}>{i.name} (stock: {i.qty})</option>
+              <option key={i.id} value={i.id}>{i.subVariant ? `${i.productGroup||i.category} · ${i.subVariant}` : i.name} — {i.qty} in stock</option>
             ))}
           </select>
         </div>

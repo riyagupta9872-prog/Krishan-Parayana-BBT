@@ -85,6 +85,29 @@ export default function Dashboard() {
   const month = new Date().getMonth()
   const salesMonth = recentTxns.filter((t) => t.date?.toDate?.()?.getMonth?.() === month && t.status !== 'voided').reduce((s, t) => s + (t.totalAmount||0), 0)
 
+  // ── P&L (current month) ────────────────────────────────────────────
+  // Revenue: cash + credit sales (not voided, not gift)
+  // COGS: cost price × qty for all sold items (uses current inventory cost — approx)
+  // Gift expense: cost price × qty for gift transactions (goods given free = expense)
+  const inventoryMap = Object.fromEntries(inventory.map(i => [i.id, i]))
+  let revenue = 0, cogs = 0, giftExpense = 0, giftUnits = 0
+
+  txns.filter(t => t.status !== 'voided' && t.date?.toDate?.()?.getMonth?.() === month).forEach(t => {
+    ;(t.items || []).forEach(item => {
+      const cost = (inventoryMap[item.skuId]?.costPrice || 0) * item.qty
+      if (t.saleType === 'gift') {
+        giftExpense += cost
+        giftUnits   += item.qty
+      } else {
+        revenue += item.lineTotal || (item.unitPrice * item.qty)
+        cogs    += cost
+      }
+    })
+  })
+  const grossProfit = revenue - cogs
+  const netProfit   = grossProfit - giftExpense
+  const grossMarginPct = revenue > 0 ? Math.round((grossProfit / revenue) * 100) : 0
+
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-6">
       <FirestoreRulesAlert error={error} />
@@ -117,6 +140,73 @@ export default function Dashboard() {
           <KPICard label="Out of Stock" value={outStock.length} icon="❌" valueColor="text-danger" accent={outStock.length > 0 ? 'red' : undefined} onClick={() => setActiveTab('apparel')} />
         </div>
       </section>
+
+      {/* ── P&L (Super Admin only — shows cost data) ─────────────── */}
+      {isSuperAdmin && (
+        <section>
+          <h3 className="section-title mb-3">Profit & Loss — This Month</h3>
+          <div className="card space-y-4">
+            {/* Summary row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl bg-success-lt border border-green-200 p-3 text-center">
+                <p className="text-ink-3 text-xs font-medium">Revenue</p>
+                <p className="font-bold text-success text-lg">{fmt.currency(revenue)}</p>
+                <p className="text-ink-4 text-xs">cash + credit</p>
+              </div>
+              <div className="rounded-xl bg-danger-lt border border-red-200 p-3 text-center">
+                <p className="text-ink-3 text-xs font-medium">Cost of Goods</p>
+                <p className="font-bold text-danger text-lg">{fmt.currency(cogs)}</p>
+                <p className="text-ink-4 text-xs">approx. at current cost</p>
+              </div>
+              <div className={`rounded-xl border p-3 text-center ${grossProfit >= 0 ? 'bg-success-lt border-green-200' : 'bg-danger-lt border-red-200'}`}>
+                <p className="text-ink-3 text-xs font-medium">Gross Profit</p>
+                <p className={`font-bold text-lg ${grossProfit >= 0 ? 'text-success' : 'text-danger'}`}>{fmt.currency(grossProfit)}</p>
+                <p className="text-ink-4 text-xs">{grossMarginPct}% margin</p>
+              </div>
+              <div className={`rounded-xl border p-3 text-center ${netProfit >= 0 ? 'bg-success-lt border-green-200' : 'bg-danger-lt border-red-200'}`}>
+                <p className="text-ink-3 text-xs font-medium">Net Profit</p>
+                <p className={`font-bold text-lg ${netProfit >= 0 ? 'text-success' : 'text-danger'}`}>{fmt.currency(netProfit)}</p>
+                <p className="text-ink-4 text-xs">after gift expense</p>
+              </div>
+            </div>
+
+            {/* Waterfall breakdown */}
+            <div className="space-y-2 border-t border-border-lt pt-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ink-3 flex items-center gap-2">💵 Revenue (Cash + Credit Sales)</span>
+                <span className="font-semibold text-success">+ {fmt.currency(revenue)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ink-3 flex items-center gap-2">📦 Cost of Goods Sold</span>
+                <span className="font-semibold text-danger">− {fmt.currency(cogs)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm border-t border-dashed border-border-lt pt-2">
+                <span className="text-ink font-semibold">Gross Profit</span>
+                <span className={`font-bold ${grossProfit >= 0 ? 'text-success' : 'text-danger'}`}>{fmt.currency(grossProfit)}</span>
+              </div>
+              {giftExpense > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-ink-3 flex items-center gap-2">
+                    🎁 Gift / Prasad Expense
+                    <span className="badge badge-amber text-xs">{giftUnits} units gifted</span>
+                  </span>
+                  <span className="font-semibold text-warning">− {fmt.currency(giftExpense)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-sm border-t border-border-lt pt-2">
+                <span className="text-ink font-bold">Net Profit</span>
+                <span className={`font-bold text-base ${netProfit >= 0 ? 'text-success' : 'text-danger'}`}>{fmt.currency(netProfit)}</span>
+              </div>
+            </div>
+
+            {cogs === 0 && (
+              <p className="text-ink-4 text-xs text-center border-t border-border-lt pt-2">
+                ℹ Cost prices not set for all items — add cost prices via Inventory → ✏ to see accurate P&L
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       <section>
         <h3 className="section-title mb-3">Recent Activity</h3>
