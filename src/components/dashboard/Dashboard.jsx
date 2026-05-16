@@ -46,7 +46,7 @@ function StockDetailPanel({ view, inventory, onClose }) {
     const g = i.group || ''
     if (g === 'apparel') return 'Apparel'
     if (g === 'books') return 'Books'
-    if (g === 'stationery') return 'Stationery'
+    if (g === 'stationery') return 'Accessories'
     if (g === 'accessories') return 'Accessories'
     return i.category || '—'
   }
@@ -54,14 +54,14 @@ function StockDetailPanel({ view, inventory, onClose }) {
   const VIEWS = {
     stock_units: {
       title: 'Total Stock Units', icon: '📦',
-      items: [...active].sort((a, b) => b.qty - a.qty),
+      items: [...active].filter((i) => i.qty > 0).sort((a, b) => b.qty - a.qty),
       cols: ['Product', 'Category', 'Qty'],
       row: (i) => [itemName(i), groupLabel(i), i.qty],
       colAlign: ['left', 'left', 'right'],
     },
     stock_mrp: {
       title: 'Stock Value (MRP)', icon: '💰',
-      items: [...active].sort((a, b) => (b.qty * (b.sellingPrice||0)) - (a.qty * (a.sellingPrice||0))),
+      items: [...active].filter((i) => i.qty > 0).sort((a, b) => (b.qty * (b.sellingPrice||0)) - (a.qty * (a.sellingPrice||0))),
       cols: ['Product', 'Qty', 'Price', 'Value'],
       row: (i) => [itemName(i), i.qty, fmt.currency(i.sellingPrice||0), fmt.currency(i.qty*(i.sellingPrice||0))],
       colAlign: ['left','right','right','right'],
@@ -69,7 +69,7 @@ function StockDetailPanel({ view, inventory, onClose }) {
     },
     stock_cost: {
       title: 'Stock Value (Cost)', icon: '🏷️',
-      items: [...active].sort((a, b) => (b.qty * (b.costPrice||0)) - (a.qty * (a.costPrice||0))),
+      items: [...active].filter((i) => i.qty > 0).sort((a, b) => (b.qty * (b.costPrice||0)) - (a.qty * (a.costPrice||0))),
       cols: ['Product', 'Qty', 'Cost', 'Value'],
       row: (i) => [itemName(i), i.qty, fmt.currency(i.costPrice||0), fmt.currency(i.qty*(i.costPrice||0))],
       colAlign: ['left','right','right','right'],
@@ -77,7 +77,7 @@ function StockDetailPanel({ view, inventory, onClose }) {
     },
     gross_margin: {
       title: 'Gross Margin by Product', icon: '📊',
-      items: [...active].sort((a, b) => {
+      items: [...active].filter((i) => i.qty > 0).sort((a, b) => {
         const ma = (a.sellingPrice||0) > 0 ? ((a.sellingPrice||0)-(a.costPrice||0))/(a.sellingPrice||0) : 0
         const mb = (b.sellingPrice||0) > 0 ? ((b.sellingPrice||0)-(b.costPrice||0))/(b.sellingPrice||0) : 0
         return mb - ma
