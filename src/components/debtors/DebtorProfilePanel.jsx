@@ -160,7 +160,7 @@ export default function DebtorProfilePanel({ debtor, onClose }) {
 
             {/* Action buttons */}
             <div className="flex gap-2 mt-2.5 flex-wrap">
-              <button onClick={() => setShowPay(true)} className="flex-1 bg-white text-primary text-xs font-semibold py-2 rounded-lg hover:bg-white/90 transition-all">💰 Pay</button>
+              <button onClick={() => setShowPay(true)} className="flex-1 bg-white text-primary text-xs font-semibold py-2 rounded-lg hover:bg-white/90 transition-all">💰 Collect</button>
               <button onClick={() => setShowLog(true)} className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 rounded-lg transition-all">📝 Log Call</button>
               <button onClick={() => setShowDir(true)} className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-2 rounded-lg transition-all">👤 Profile</button>
               {isSuperAdmin && (

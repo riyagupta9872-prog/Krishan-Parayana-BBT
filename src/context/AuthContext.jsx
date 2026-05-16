@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import {
   signInWithEmailAndPassword, signOut, onAuthStateChanged,
-  createUserWithEmailAndPassword, updateProfile,
+  createUserWithEmailAndPassword, updateProfile, updatePassword,
+  sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider,
 } from 'firebase/auth'
 import { auth, db } from '../services/firebase'
 import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore'
@@ -80,8 +81,21 @@ export function AuthProvider({ children }) {
 
   const logout = () => signOut(auth)
 
+  const resetPassword = (email) => sendPasswordResetEmail(auth, email)
+
+  const changePassword = async (currentPassword, newPassword) => {
+    const cred = EmailAuthProvider.credential(auth.currentUser.email, currentPassword)
+    await reauthenticateWithCredential(auth.currentUser, cred)
+    await updatePassword(auth.currentUser, newPassword)
+  }
+
+  const updateDisplayName = async (name) => {
+    await updateProfile(auth.currentUser, { displayName: name })
+    setUser((prev) => ({ ...prev, displayName: name }))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isSuperAdmin, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isSuperAdmin, loading, login, signup, logout, resetPassword, changePassword, updateDisplayName }}>
       {children}
     </AuthContext.Provider>
   )

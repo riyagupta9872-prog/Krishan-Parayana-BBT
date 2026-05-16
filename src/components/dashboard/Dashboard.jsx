@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { inventoryService } from '../../services/inventoryService'
@@ -36,6 +37,142 @@ function KPICard({ label, value, sub, valueColor = 'text-ink', icon, onClick, ac
   )
 }
 
+function StockDetailPanel({ view, inventory, onClose }) {
+  if (!view) return null
+  const active = inventory.filter((i) => i.status === 'active')
+
+  const itemName = (i) => i.subVariant ? `${i.productGroup || i.name} · ${i.subVariant}` : i.name
+  const groupLabel = (i) => {
+    const g = i.group || ''
+    if (g === 'apparel') return 'Apparel'
+    if (g === 'books') return 'Books'
+    if (g === 'stationery') return 'Stationery'
+    if (g === 'accessories') return 'Accessories'
+    return i.category || '—'
+  }
+
+  const VIEWS = {
+    stock_units: {
+      title: 'Total Stock Units', icon: '📦',
+      items: [...active].sort((a, b) => b.qty - a.qty),
+      cols: ['Product', 'Category', 'Qty'],
+      row: (i) => [itemName(i), groupLabel(i), i.qty],
+      colAlign: ['left', 'left', 'right'],
+    },
+    stock_mrp: {
+      title: 'Stock Value (MRP)', icon: '💰',
+      items: [...active].sort((a, b) => (b.qty * (b.sellingPrice||0)) - (a.qty * (a.sellingPrice||0))),
+      cols: ['Product', 'Qty', 'Price', 'Value'],
+      row: (i) => [itemName(i), i.qty, fmt.currency(i.sellingPrice||0), fmt.currency(i.qty*(i.sellingPrice||0))],
+      colAlign: ['left','right','right','right'],
+      footer: { cols: 4, label: 'Total Value', value: fmt.currency(active.reduce((s,i) => s+i.qty*(i.sellingPrice||0), 0)) },
+    },
+    stock_cost: {
+      title: 'Stock Value (Cost)', icon: '🏷️',
+      items: [...active].sort((a, b) => (b.qty * (b.costPrice||0)) - (a.qty * (a.costPrice||0))),
+      cols: ['Product', 'Qty', 'Cost', 'Value'],
+      row: (i) => [itemName(i), i.qty, fmt.currency(i.costPrice||0), fmt.currency(i.qty*(i.costPrice||0))],
+      colAlign: ['left','right','right','right'],
+      footer: { cols: 4, label: 'Total Cost Value', value: fmt.currency(active.reduce((s,i) => s+i.qty*(i.costPrice||0), 0)) },
+    },
+    gross_margin: {
+      title: 'Gross Margin by Product', icon: '📊',
+      items: [...active].sort((a, b) => {
+        const ma = (a.sellingPrice||0) > 0 ? ((a.sellingPrice||0)-(a.costPrice||0))/(a.sellingPrice||0) : 0
+        const mb = (b.sellingPrice||0) > 0 ? ((b.sellingPrice||0)-(b.costPrice||0))/(b.sellingPrice||0) : 0
+        return mb - ma
+      }),
+      cols: ['Product', 'MRP', 'Cost', 'Margin %', 'Qty', 'Stock Value'],
+      row: (i) => {
+        const mrp = i.sellingPrice || 0
+        const cost = i.costPrice || 0
+        const pct = mrp > 0 ? Math.round(((mrp - cost) / mrp) * 100) : 0
+        return [itemName(i), fmt.currency(mrp), fmt.currency(cost), `${pct}%`, i.qty, fmt.currency(i.qty*(mrp-cost))]
+      },
+      colAlign: ['left','right','right','right','right','right'],
+    },
+    low_stock: {
+      title: 'Low Stock Items', icon: '⚠️',
+      items: active.filter((i) => i.qty > 0 && i.qty <= (i.lowStockThreshold||5)).sort((a, b) => a.qty - b.qty),
+      cols: ['Product', 'Category', 'Qty', 'Min'],
+      row: (i) => [itemName(i), groupLabel(i), i.qty, i.lowStockThreshold||5],
+      colAlign: ['left','left','right','right'],
+    },
+    out_of_stock: {
+      title: 'Out of Stock', icon: '❌',
+      items: active.filter((i) => i.qty === 0).sort((a, b) => (a.productGroup||a.name).localeCompare(b.productGroup||b.name)),
+      cols: ['Product', 'Category', 'Selling Price'],
+      row: (i) => [itemName(i), groupLabel(i), fmt.currency(i.sellingPrice||0)],
+      colAlign: ['left','left','right'],
+    },
+  }
+
+  const cfg = VIEWS[view]
+  if (!cfg) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-2xl h-full flex flex-col shadow-modal overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border-lt shrink-0 bg-white">
+          <span className="text-2xl">{cfg.icon}</span>
+          <div className="flex-1">
+            <h3 className="font-bold text-ink text-base">{cfg.title}</h3>
+            <p className="text-ink-4 text-xs">{cfg.items.length} items</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-ink-3 hover:bg-slate-200 transition-colors">✕</button>
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {cfg.items.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-4xl mb-3">{cfg.icon}</p>
+              <p className="text-ink-3 text-sm">No items found.</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm border-collapse">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="border-b-2 border-border-lt">
+                  {cfg.cols.map((c, ci) => (
+                    <th key={c} className={`py-2 pr-3 last:pr-0 text-xs font-semibold text-ink-3
+                      ${cfg.colAlign?.[ci] === 'right' ? 'text-right' : 'text-left'}`}>{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {cfg.items.map((item, idx) => {
+                  const row = cfg.row(item)
+                  return (
+                    <tr key={item.id || idx} className="border-b border-border-lt last:border-0 hover:bg-slate-50 transition-colors">
+                      {row.map((cell, ci) => (
+                        <td key={ci} className={`py-2.5 pr-3 last:pr-0 text-xs
+                          ${ci === 0 ? 'text-ink font-medium' : 'text-ink-2'}
+                          ${cfg.colAlign?.[ci] === 'right' ? 'text-right' : ''}`}>
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+              {cfg.footer && (
+                <tfoot>
+                  <tr className="border-t-2 border-border-lt">
+                    <td className="py-3 text-ink font-bold text-xs">{cfg.footer.label}</td>
+                    <td colSpan={cfg.footer.cols - 1} className="py-3 text-right text-ink font-bold text-sm pr-0">{cfg.footer.value}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ActivityItem({ txn }) {
   const type = txn.saleType
   const colors  = { cash: 'text-success', credit: 'text-primary', gift: 'text-warning' }
@@ -62,6 +199,7 @@ function ActivityItem({ txn }) {
 export default function Dashboard() {
   const { isSuperAdmin } = useAuth()
   const { setActiveTab } = useApp()
+  const [detailView, setDetailView] = useState(null)
 
   const { data: inventory, loading: l1 }   = useFirestoreSubscription((cb, e) => inventoryService.subscribe(cb, e))
   const { data: debtors,   loading: l2 }   = useFirestoreSubscription((cb, e) => debtorService.subscribe(cb, e))
@@ -111,6 +249,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-6">
       <FirestoreRulesAlert error={error} />
+      <StockDetailPanel view={detailView} inventory={inventory} onClose={() => setDetailView(null)} />
 
       <div>
         <h2 className="font-body text-ink font-bold text-base">Hare Krishna 🙏</h2>
@@ -132,12 +271,12 @@ export default function Dashboard() {
       <section>
         <h3 className="section-title mb-3">Inventory Overview</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KPICard label="Total Stock Units"  value={active.reduce((s,i) => s+i.qty, 0)} icon="📦" />
-          <KPICard label="Stock Value (MRP)"  value={fmt.currency(mrpValue)} icon="💰" accent="blue" />
-          {isSuperAdmin && <KPICard label="Stock Value (Cost)"  value={fmt.currency(costValue)} icon="🏷️" />}
-          {isSuperAdmin && <KPICard label="Gross Margin" value={fmt.currency(mrpValue-costValue)} icon="📊" valueColor="text-success" accent="green" />}
-          <KPICard label="Low Stock Items" value={lowStock.length} sub="tap to view" icon="⚠️" valueColor="text-warning" accent="amber" onClick={() => setActiveTab('apparel')} />
-          <KPICard label="Out of Stock" value={outStock.length} icon="❌" valueColor="text-danger" accent={outStock.length > 0 ? 'red' : undefined} onClick={() => setActiveTab('apparel')} />
+          <KPICard label="Total Stock Units" value={active.reduce((s,i) => s+i.qty, 0)} icon="📦" sub="tap to view" onClick={() => setDetailView('stock_units')} />
+          <KPICard label="Stock Value (MRP)" value={fmt.currency(mrpValue)} icon="💰" accent="blue" sub="tap to view" onClick={() => setDetailView('stock_mrp')} />
+          {isSuperAdmin && <KPICard label="Stock Value (Cost)" value={fmt.currency(costValue)} icon="🏷️" sub="tap to view" onClick={() => setDetailView('stock_cost')} />}
+          {isSuperAdmin && <KPICard label="Gross Margin" value={fmt.currency(mrpValue-costValue)} icon="📊" valueColor="text-success" accent="green" sub="tap to view" onClick={() => setDetailView('gross_margin')} />}
+          <KPICard label="Low Stock Items" value={lowStock.length} sub="tap to view" icon="⚠️" valueColor="text-warning" accent="amber" onClick={() => setDetailView('low_stock')} />
+          <KPICard label="Out of Stock" value={outStock.length} icon="❌" sub="tap to view" valueColor="text-danger" accent={outStock.length > 0 ? 'red' : undefined} onClick={() => setDetailView('out_of_stock')} />
         </div>
       </section>
 
